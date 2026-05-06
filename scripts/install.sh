@@ -59,7 +59,7 @@ info "Applying Home Manager config for profile '${HM_PROFILE}' (user: $USER)..."
 nix run nixpkgs#home-manager -- switch \
   --flake "${FLAKE_DIR}#${HM_PROFILE}" \
   --impure \
-  --backup-extension bak \
+  -b bak \
   -v
 
 info "Home Manager configuration applied."

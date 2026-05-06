@@ -1,4 +1,4 @@
-{ pkgs, lib, config, isDarwin ? false, ... }:
+{ pkgs, lib, config, isDarwin ? false, nixgl ? null, ... }:
 
 {
   # ── Identity ──────────────────────────────────────────────────────────────
@@ -76,20 +76,18 @@
   };
 
   # ── Ghostty ───────────────────────────────────────────────────────────────
-  # Linux: wrapped with nixGL so Ghostty can find host GPU drivers.
   # macOS: ghostty-bin (pre-built); pkgs.ghostty source build is broken on Darwin.
+  # Linux: pkgs.ghostty works on Mesa/Intel. For NVIDIA, wrap manually with nixGL.
   programs.ghostty = {
     enable  = true;
     package = if isDarwin
       then pkgs.ghostty-bin
-      else config.lib.nixGL.wrap pkgs.ghostty;
+      else pkgs.ghostty;
     settings = {
       command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
       theme         = "catppuccin-mocha";
-      # shell-integration handled manually in config.nu via GHOSTTY_RESOURCES_DIR
-      "shell-integration" = "none";
     } // lib.optionalAttrs (!isDarwin) {
       # GTK/Wayland window decoration — Linux only
       "window-decoration" = "server";
@@ -98,8 +96,9 @@
 
   # ── Git ───────────────────────────────────────────────────────────────────
   programs.git = {
-    enable       = true;
-    delta.enable = true;
+    enable                    = true;
+    delta.enable              = true;
+    delta.enableGitIntegration = true;
     extraConfig = {
       init.defaultBranch   = "main";
       pull.rebase          = true;
@@ -179,8 +178,8 @@
       # ── Python ────────────────────────────────────────────────────────
       python3 uv
 
-      # ── Node.js (fnm manages versions; no global nodejs package needed)
-      fnm
+      # ── JavaScript runtime ────────────────────────────────────────────
+      bun
 
       # ── Container / OCI: shared tools (both platforms) ────────────────
       dive crane cosign lazydocker
@@ -227,6 +226,7 @@
   home.sessionPath = [
     "${config.home.homeDirectory}/.cargo/bin"
     "${config.home.homeDirectory}/.local/bin"
+    "${config.home.homeDirectory}/.bun/bin"
   ];
 
   xdg.enable = true;

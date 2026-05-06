@@ -14,19 +14,6 @@ $env.config.history.file_format  = "sqlite"
 $env.config.history.max_size     = 100_000
 $env.config.history.sync_on_enter = true
 
-# ── Ghostty shell integration ─────────────────────────────────────────────────
-# Sourced only when running inside Ghostty. Guards against missing file.
-if ($env | get -i TERM_PROGRAM | default "" | str downcase) == "ghostty" {
-    let integration = (
-        $env | get -i GHOSTTY_RESOURCES_DIR
-            | default ""
-            | path join "shell-integration" "nushell" "ghostty.nu"
-    )
-    if ($integration | path exists) {
-        source $integration
-    }
-}
-
 # ── direnv hook ───────────────────────────────────────────────────────────────
 # direnv has no built-in nushell hook generator; this minimal hook fires on
 # every prompt render and loads env changes when .envrc is present.
@@ -36,15 +23,6 @@ if (which direnv | is-not-empty) {
             if (".envrc" | path exists) or ("DIRENV_FILE" in $env) {
                 direnv export json | from json | load-env
             }
-        }]
-    )
-}
-
-# ── fnm: auto-switch Node version on directory change ─────────────────────────
-if (which fnm | is-not-empty) {
-    $env.config.hooks.env_change.PWD = (
-        $env.config.hooks.env_change.PWD | append [{||
-            fnm use --silent-if-unchanged
         }]
     )
 }

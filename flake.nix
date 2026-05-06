@@ -9,16 +9,9 @@
       url = "github:nix-community/home-manager/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    # nixGL: OpenGL driver bridge for Nix-packaged GUI apps (Ghostty) on Ubuntu.
-    # Not used on macOS — Darwin has native Metal/OpenGL support.
-    nixgl = {
-      url = "github:nix-community/nixGL";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { nixpkgs, home-manager, nixgl, ... }:
+  outputs = { nixpkgs, home-manager, ... }:
     let
       linuxPkgs  = nixpkgs.legacyPackages."x86_64-linux";
       darwinPkgs = nixpkgs.legacyPackages."aarch64-darwin";
@@ -27,19 +20,8 @@
       # Run: home-manager switch --flake .#ubuntu --impure
       homeConfigurations."ubuntu" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
-        extraSpecialArgs = { inherit nixgl; isDarwin = false; };
-        modules = [
-          # nixGL home-manager module adds config.lib.nixGL.wrap for GPU bridging
-          nixgl.homeManagerModules.nixGL
-          {
-            # nixGL settings are here (not in home.nix) so macOS config stays clean
-            # Change "mesa" to "nvidia" for NVIDIA GPUs
-            nixGL.packages       = nixgl.packages;
-            nixGL.defaultWrapper = "mesa";
-            nixGL.installScripts = [ "mesa" ];
-          }
-          ./home.nix
-        ];
+        extraSpecialArgs = { isDarwin = false; };
+        modules = [ ./home.nix ];
       };
 
       # ── macOS / Apple Silicon profile ─────────────────────────────────────

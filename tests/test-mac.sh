@@ -93,7 +93,7 @@ check "go"              "go"               go        version
 check "rustup"          "rustup"           rustup    --version
 check "python3"         "python3"          python3   --version
 check "uv"              "uv"               uv        --version
-check "fnm"             "fnm"              fnm       --version
+check "bun"             "bun"              bun       --version
 
 # Kubernetes
 check "kubectl"         "kubectl"          kubectl   version --client

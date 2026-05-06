@@ -67,10 +67,8 @@ source_hm() {
   export PATH="${HOME}/.nix-profile/bin:${HOME}/.local/bin:${PATH:-}"
 }
 
-source_fnm() {
-  if command -v fnm &>/dev/null; then
-    eval "$(fnm env --shell bash 2>/dev/null)" || true
-  fi
+source_bun() {
+  export PATH="${HOME}/.bun/bin:${PATH:-}"
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +100,7 @@ echo "Profile: ${HM_PROFILE}  (applies home.nix — installs all packages)"
 if nix run nixpkgs#home-manager -- switch \
      --flake "${REPO_DIR}#${HM_PROFILE}" \
      --impure \
-     --backup-extension bak \
+     -b bak \
      -v 2>&1; then
   source_hm
   pass "Home Manager"
@@ -160,16 +158,15 @@ fi
 
 # ══ Step 5: AI tools ══════════════════════════════════════════════════════════
 section "5/6  AI tools"
-# Initialise fnm so npm is available; fall back to nix shell if fnm isn't ready.
-source_fnm
-if ! command -v node &>/dev/null; then
-  echo "node not on PATH — bootstrapping via nix shell nixpkgs#nodejs..."
-  # Run the npm installs via a nix shell so fnm is not required at this point.
-  _npm_via_nix() {
-    nix shell nixpkgs#nodejs --command npm install -g "$@"
+# Ensure ~/.bun/bin is on PATH; fall back to nix shell if bun isn't ready yet.
+source_bun
+if ! command -v bun &>/dev/null; then
+  echo "bun not on PATH — bootstrapping via nix shell nixpkgs#bun..."
+  _bun_install_g() {
+    nix shell nixpkgs#bun --command bun install -g "$@"
   }
 else
-  _npm_via_nix() { npm install -g "$@"; }
+  _bun_install_g() { bun install -g "$@"; }
 fi
 
 _ai_ok=true
@@ -179,7 +176,7 @@ if command -v claude &>/dev/null; then
   skip "Claude Code" "already installed"
 else
   echo "Installing Claude Code..."
-  _npm_via_nix @anthropic-ai/claude-code || { fail "Claude Code" "npm install failed"; _ai_ok=false; }
+  _bun_install_g @anthropic-ai/claude-code || { fail "Claude Code" "bun install failed"; _ai_ok=false; }
   command -v claude &>/dev/null && pass "Claude Code"
 fi
 
@@ -188,7 +185,7 @@ if command -v gemini &>/dev/null; then
   skip "Gemini CLI" "already installed"
 else
   echo "Installing Gemini CLI..."
-  _npm_via_nix @google/gemini-cli || { fail "Gemini CLI" "npm install failed"; _ai_ok=false; }
+  _bun_install_g @google/gemini-cli || { fail "Gemini CLI" "bun install failed"; _ai_ok=false; }
   command -v gemini &>/dev/null && pass "Gemini CLI"
 fi
 

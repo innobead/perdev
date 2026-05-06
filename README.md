@@ -24,7 +24,7 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 | Go | `go`, `gopls`, `golangci-lint`, `delve` |
 | Rust | `rustup` (manages stable/nightly toolchains) |
 | Python | `python3`, `uv` |
-| Node.js | `fnm` (manages versions via `.node-version`/`.nvmrc`) |
+| JavaScript | `bun` (runtime + package manager) |
 
 ### Containers & OCI
 | Tool | Ubuntu | macOS |
@@ -104,8 +104,8 @@ perdev/
 ├── Justfile               # Short command aliases
 ├── configs/
 │   ├── nushell/
-│   │   ├── env.nu         # PATH, env vars, fnm init
-│   │   └── config.nu      # Settings, aliases, direnv/Ghostty/fnm hooks
+│   │   ├── env.nu         # PATH, env vars, BUN_INSTALL
+│   │   └── config.nu      # Settings, aliases, direnv/Ghostty hooks
 │   └── ghostty/
 │       └── config         # Reference docs (canonical config is in home.nix)
 ├── scripts/
@@ -124,7 +124,7 @@ perdev/
 
 ### Ubuntu
 
-- **Ghostty** is wrapped with [nixGL](https://github.com/nix-community/nixGL) so it can find the host's GPU drivers. Change `nixGL.defaultWrapper = "mesa"` to `"nvidia"` in `home.nix` for NVIDIA GPUs.
+- **Ghostty** uses `pkgs.ghostty` directly. On Mesa/Intel GPUs this works without extra setup. For NVIDIA, install [nixGL](https://github.com/nix-community/nixGL) separately and wrap the binary manually.
 - **Docker** is installed via the official apt repository (`scripts/docker-setup.sh`) — `pkgs.docker` from Nix does not integrate with Ubuntu's systemd correctly.
 - **Nushell** is set as the terminal shell via `programs.ghostty.settings.command`. Bash stays as the login shell and runs `exec nu` for interactive sessions, avoiding desktop login issues.
 - **Ollama** runs as a `systemd` user service and starts automatically on login.
@@ -199,6 +199,6 @@ Same two-phase logic as the Ubuntu test, but runs directly on your Mac. Non-dest
 ## Notes
 
 - **Rust**: only `rustup` is installed via Nix. Do not add `pkgs.cargo` or `pkgs.rustc` alongside it — they conflict. Use `rustup toolchain install stable` to get the compiler.
-- **Node.js**: only `fnm` is installed. Run `fnm install --lts` to get a Node.js version. `fnm` auto-switches on directory change based on `.node-version`/`.nvmrc`.
+- **JavaScript**: `bun` is installed via Nix. It serves as both the runtime and the package manager. Global packages (Claude Code, Gemini CLI) are installed with `bun install -g <pkg>` and land in `~/.bun/bin`.
 - **`claude-code` / `gemini-cli`**: commented out in `home.nix` pending nixpkgs package name verification. `scripts/ai-tools-setup.sh` installs them via npm in the meantime.
 - **`stateVersion`**: `home.stateVersion = "24.11"` does not need to match the nixpkgs channel. Do not change it unless Home Manager's migration guide instructs you to.

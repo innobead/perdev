@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ai-tools-setup.sh — Install AI development tools that require npm or special setup.
 #
-# Run this AFTER install.sh and in a fresh shell (so fnm is on PATH).
+# Run this AFTER install.sh and in a fresh shell (so bun is on PATH).
 #
 # Installs:
 #   - Claude Code CLI (@anthropic-ai/claude-code) via npm
@@ -20,30 +20,19 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-# ── Step 1: Ensure Node.js is available via fnm ───────────────────────────────
-if ! command -v fnm &>/dev/null; then
-  error "fnm not found. Run install.sh first and open a new shell."
+# ── Step 1: Ensure Bun is available ──────────────────────────────────────────
+if ! command -v bun &>/dev/null; then
+  error "bun not found. Run install.sh first and open a new shell."
   exit 1
 fi
-
-# Initialize fnm in this script's bash environment
-eval "$(fnm env --shell bash)"
-
-if ! command -v node &>/dev/null; then
-  info "Installing Node.js LTS via fnm..."
-  fnm install --lts
-  fnm use lts-latest
-  fnm default lts-latest
-else
-  info "Node.js available: $(node --version)"
-fi
+info "Bun available: $(bun --version)"
 
 # ── Step 2: Claude Code CLI ───────────────────────────────────────────────────
 if command -v claude &>/dev/null; then
   info "Claude Code already installed: $(claude --version 2>/dev/null || echo 'installed')"
 else
   info "Installing Claude Code CLI..."
-  npm install -g @anthropic-ai/claude-code
+  bun install -g @anthropic-ai/claude-code
 fi
 
 # ── Step 3: Gemini CLI ────────────────────────────────────────────────────────
@@ -51,8 +40,7 @@ if command -v gemini &>/dev/null; then
   info "Gemini CLI already installed."
 else
   info "Installing Gemini CLI..."
-  # Official Google Gemini CLI — published to npm as @google/gemini-cli
-  npm install -g @google/gemini-cli
+  bun install -g @google/gemini-cli
 fi
 
 # ── Step 4: GitHub Copilot CLI extension ──────────────────────────────────────

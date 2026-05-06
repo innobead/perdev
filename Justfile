@@ -84,7 +84,7 @@ verify:
     @go version
     @rustup show active-toolchain
     @python3 --version
-    @fnm --version
+    @bun --version
     @echo "=== Containers / Kubernetes ==="
     @kubectl version --client --short 2>/dev/null || kubectl version --client
     @helm version --short

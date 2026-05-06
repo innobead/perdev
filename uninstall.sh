@@ -88,20 +88,15 @@ else
   skip "RTK" "not installed"
 fi
 
-# npm-based tools — init fnm so npm is available
-_fnm_active=false
-if command -v fnm &>/dev/null; then
-  eval "$(fnm env --shell bash 2>/dev/null)" && _fnm_active=true || true
-fi
-
+# bun-based tools
+export PATH="${HOME}/.bun/bin:${PATH:-}"
 for _pkg in "@anthropic-ai/claude-code" "@google/gemini-cli"; do
-  _bin="${_pkg##*/}"  # last path segment — close enough for display
-  if $IS_MAC || $_fnm_active; then
-    npm uninstall -g "$_pkg" 2>/dev/null \
-      && pass "npm: $_pkg" \
-      || skip "npm: $_pkg" "not installed"
+  if command -v bun &>/dev/null; then
+    bun remove -g "$_pkg" 2>/dev/null \
+      && pass "bun: $_pkg" \
+      || skip "bun: $_pkg" "not installed"
   else
-    skip "npm: $_pkg" "fnm not active — uninstall manually: npm uninstall -g $_pkg"
+    skip "bun: $_pkg" "bun not found — uninstall manually: bun remove -g $_pkg"
   fi
 done
 
