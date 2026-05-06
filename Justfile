@@ -9,6 +9,10 @@ default:
 setup:
     bash setup.sh
 
+# Remove all components installed by setup.sh (prompts for confirmation)
+uninstall:
+    bash uninstall.sh
+
 # Bootstrap: install Nix and apply Home Manager (auto-detects Ubuntu vs macOS)
 install:
     bash scripts/install.sh

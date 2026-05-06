@@ -146,6 +146,7 @@ just update          # update all flake inputs to latest
 just rollback        # list generations; roll back if something broke
 just verify          # quick sanity-check of installed tools
 just ollama-models   # pull llama3.2 and deepseek-coder-v2
+just uninstall       # remove everything installed by setup.sh
 ```
 
 ### Adding or removing a package
