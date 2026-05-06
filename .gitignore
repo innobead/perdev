@@ -1,0 +1,6 @@
+# Nix build artifacts
+result
+result-*
+
+# Home Manager session vars (generated, not committed)
+.hm-session-vars.sh
