@@ -160,30 +160,6 @@
     };
   };
 
-  # ── claude-code-router service ────────────────────────────────────────────
-  # Routes Claude Code API calls: default→Sonnet, background/subtasks→Haiku.
-  # ccr-service wrapper is written by ai-tools-setup.sh (needs fnm on PATH).
-  # Claude Code connects via ANTHROPIC_BASE_URL set in sessionVariables below.
-  systemd.user.services.claude-code-router = lib.mkIf (!isDarwin) {
-    Unit.Description = "claude-code-router LLM routing proxy";
-    Install.WantedBy = [ "default.target" ];
-    Service = {
-      ExecStart = "%h/.local/bin/ccr-service";
-      Restart   = "on-failure";
-    };
-  };
-
-  launchd.agents.claude-code-router = lib.mkIf isDarwin {
-    enable = true;
-    config = {
-      Label            = "com.local.claude-code-router";
-      ProgramArguments = [ "${config.home.homeDirectory}/.local/bin/ccr-service" ];
-      RunAtLoad        = true;
-      KeepAlive        = true;
-      StandardOutPath  = "/tmp/claude-code-router.log";
-      StandardErrorPath = "/tmp/claude-code-router.err";
-    };
-  };
 
   # ── Packages ──────────────────────────────────────────────────────────────
   home.packages = with pkgs;
@@ -246,9 +222,6 @@
     PAGER       = "bat --plain";
     CARGO_HOME  = "${config.home.homeDirectory}/.cargo";
     RUSTUP_HOME = "${config.home.homeDirectory}/.rustup";
-    # Route Claude Code API calls through claude-code-router (started by launchd/systemd).
-    # Remove this line to bypass the router and hit Anthropic directly.
-    ANTHROPIC_BASE_URL = "http://localhost:3456";
   };
 
   home.sessionPath = [

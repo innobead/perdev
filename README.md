@@ -46,7 +46,6 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 | [Ollama](https://ollama.com/) | Nix | Local LLM server (Llama, Mistral, Gemma, …) |
 | [LLM](https://llm.datasette.io/) | Nix | Universal LLM CLI with plugin support |
 | [RTK](https://github.com/rtk-ai/rtk) | `curl` / `brew` | CLI output filter — strips noise before it hits the LLM (60–90% savings) |
-| [claude-code-router](https://github.com/musistudio/claude-code-router) | npm | Proxy that routes background/subtask calls to Haiku (~80% cheaper) |
 
 ### CLI utilities
 `ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
@@ -55,48 +54,14 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 
 ## Token cost optimization
 
-Three tools run together to cut Claude Code API costs by 60–80%:
+Two levers cut Claude Code API costs significantly:
 
 | Layer | Tool | Mechanism | Savings |
 |---|---|---|---|
 | CLI output | **RTK** | Strips progress bars, passing tests, verbose logs before they enter the context window | 60–90% on noisy commands |
-| Model routing | **claude-code-router** | Routes background/subtask calls to Haiku; Sonnet only for main reasoning | ~80% on background tasks |
 | Session effort | **`/effort`** | Lower effort level reduces thinking-token budget for simple tasks | variable |
 
-### How it works
-
-```
-Claude Code → localhost:3456 (ccr) → Anthropic API
-                    │
-                    ├── default tasks     → claude-sonnet-4-6
-                    ├── background/tools  → claude-haiku-4-5  (80% cheaper)
-                    └── long context      → claude-sonnet-4-6
-
-Bash tool calls → RTK hook rewrites → filtered output (60-90% fewer tokens)
-```
-
-RTK is wired up automatically via a Claude Code hook (`rtk init -g`). The router runs as a launchd/systemd service and `ANTHROPIC_BASE_URL` is set in your shell to point Claude Code at it. The router config lives at `~/.claude-code-router/config.json`.
-
-### Usage
-
-```bash
-just ccr-code     # start router + open Claude Code (recommended)
-just ccr-start    # start router only (service also auto-starts on login)
-just ccr-stop     # stop router
-just ccr-status   # check router process and recent log
-```
-
-To bypass the router temporarily (hit Anthropic directly):
-
-```bash
-ANTHROPIC_BASE_URL="" claude
-```
-
-### Model routing config
-
-Edit `~/.claude-code-router/config.json` to change model assignments. The template at `configs/claude-code-router/config.json` is the source of truth — re-run `just ai` to redeploy it.
-
-To route background tasks to a local Ollama model instead of Haiku, change the `"background"` entry to `"ollama,qwen2.5-coder:7b"` (requires `ollama pull qwen2.5-coder:7b` first).
+RTK is wired up automatically via a Claude Code hook (`rtk init -g`, run by `just ai`). All Bash tool calls are transparently rewritten through `rtk` to filter noise before it hits the LLM.
 
 ---
 

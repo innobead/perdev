@@ -21,29 +21,9 @@ docker:
 docker-mac:
     bash scripts/docker-mac-setup.sh
 
-# Install AI tools (Claude Code, Gemini CLI, Copilot, LLM plugins, RTK, ccr)
+# Install AI tools (Claude Code, Gemini CLI, Copilot, LLM plugins, RTK)
 ai:
     bash scripts/ai-tools-setup.sh
-
-# Start claude-code-router in the background (routes background tasks to Haiku)
-ccr-start:
-    @mkdir -p ~/.claude-code-router
-    ccr start &
-
-# Stop claude-code-router
-ccr-stop:
-    ccr stop 2>/dev/null || pkill -f "ccr start" 2>/dev/null || true
-
-# Start router then open Claude Code (token-efficient workflow)
-ccr-code:
-    ccr code
-
-# Show router status and recent log
-ccr-status:
-    @echo "=== Process ==="
-    @pgrep -fl ccr || echo "ccr not running"
-    @echo "=== Log (last 20 lines) ==="
-    @tail -20 /tmp/claude-code-router.log 2>/dev/null || echo "(no log yet)"
 
 # Full setup: provision everything
 all: install
