@@ -13,7 +13,7 @@
 #   2. Home Manager — nix run nixpkgs#home-manager switch (all packages)
 #   3. Rust         — rustup toolchain install stable
 #   4. Docker       — Docker CE (Ubuntu) or Colima start (macOS)
-#   5. AI tools     — Claude Code, Gemini CLI, gh Copilot, LLM plugins
+#   5. AI tools     — Claude Code, Gemini CLI, gh Copilot, LLM plugins, RTK, ccr
 #   6. Ollama models — pull llama3.2 if ollama daemon is reachable
 
 # Do NOT use set -e — steps are independent; failures are tracked manually.
@@ -222,6 +222,54 @@ else
   fail "LLM plugins" "llm not found — Home Manager step may have failed"
   _ai_ok=false
 fi
+
+# RTK (Rust Token Killer) — filters CLI output noise before it reaches the LLM
+if command -v rtk &>/dev/null; then
+  skip "RTK" "already installed"
+else
+  echo "Installing RTK..."
+  if $IS_MAC && command -v brew &>/dev/null; then
+    brew install rtk && pass "RTK" || { fail "RTK" "brew install failed"; _ai_ok=false; }
+  else
+    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
+      && pass "RTK" || { fail "RTK" "curl install failed"; _ai_ok=false; }
+  fi
+fi
+if command -v rtk &>/dev/null; then
+  rtk init -g 2>/dev/null || true
+fi
+
+# claude-code-router — routes background/subtask calls to Haiku (~80% cheaper)
+if command -v ccr &>/dev/null; then
+  skip "claude-code-router" "already installed"
+else
+  echo "Installing claude-code-router..."
+  _npm_via_nix @musistudio/claude-code-router \
+    && pass "claude-code-router" || { fail "claude-code-router" "npm install failed"; _ai_ok=false; }
+fi
+
+_CCR_CONFIG="${HOME}/.claude-code-router/config.json"
+_CCR_TEMPLATE="${REPO_DIR}/configs/claude-code-router/config.json"
+if [[ -f "$_CCR_CONFIG" ]] && ! grep -q "ANTHROPIC_API_KEY_PLACEHOLDER" "$_CCR_CONFIG" 2>/dev/null; then
+  skip "ccr config" "already configured"
+else
+  mkdir -p "$(dirname "$_CCR_CONFIG")"
+  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    sed "s/ANTHROPIC_API_KEY_PLACEHOLDER/${ANTHROPIC_API_KEY}/" "$_CCR_TEMPLATE" > "$_CCR_CONFIG"
+    pass "ccr config" "written with ANTHROPIC_API_KEY"
+  else
+    cp "$_CCR_TEMPLATE" "$_CCR_CONFIG"
+    skip "ccr config" "ANTHROPIC_API_KEY not set — edit $_CCR_CONFIG to add your key"
+  fi
+fi
+
+mkdir -p "${HOME}/.local/bin"
+cat > "${HOME}/.local/bin/ccr-service" << 'CCR_EOF'
+#!/usr/bin/env bash
+eval "$(fnm env --shell bash 2>/dev/null)" || true
+exec ccr start
+CCR_EOF
+chmod +x "${HOME}/.local/bin/ccr-service"
 
 $_ai_ok && pass "AI tools" "all components installed" || true
 
