@@ -95,10 +95,13 @@
   };
 
   # ── Git ───────────────────────────────────────────────────────────────────
+  programs.delta = {
+    enable                = true;
+    enableGitIntegration  = true;
+  };
+
   programs.git = {
-    enable                    = true;
-    delta.enable              = true;
-    delta.enableGitIntegration = true;
+    enable      = true;
     extraConfig = {
       init.defaultBranch   = "main";
       pull.rebase          = true;
@@ -216,11 +219,14 @@
 
   # ── Session variables ─────────────────────────────────────────────────────
   home.sessionVariables = {
-    EDITOR      = "nvim";
-    VISUAL      = "nvim";
-    PAGER       = "bat --plain";
-    CARGO_HOME  = "${config.home.homeDirectory}/.cargo";
-    RUSTUP_HOME = "${config.home.homeDirectory}/.rustup";
+    EDITOR        = "nvim";
+    VISUAL        = "nvim";
+    PAGER         = "bat --plain";
+    CARGO_HOME    = "${config.home.homeDirectory}/.cargo";
+    RUSTUP_HOME   = "${config.home.homeDirectory}/.rustup";
+    BUN_INSTALL   = "${config.home.homeDirectory}/.bun";
+    # Include Nix profile terminfo so xterm-ghostty is found over SSH.
+    TERMINFO_DIRS = "${config.home.homeDirectory}/.nix-profile/share/terminfo:/usr/share/terminfo";
   };
 
   home.sessionPath = [

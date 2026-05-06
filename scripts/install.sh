@@ -82,14 +82,27 @@ fi
 if command -v rustup &>/dev/null; then
   if ! rustup toolchain list 2>/dev/null | grep -q "^stable"; then
     info "Installing Rust stable toolchain..."
-    rustup toolchain install stable --component rust-analyzer rustfmt clippy
+    rustup toolchain install stable \
+      --component rust-analyzer \
+      --component rustfmt \
+      --component clippy
     rustup default stable
   else
     info "Rust stable toolchain already installed."
   fi
 fi
 
-# ── Step 6: Commit flake.lock ─────────────────────────────────────────────────
+# ── Step 6: Ghostty terminfo ──────────────────────────────────────────────────
+# xterm-ghostty terminfo ships with the ghostty Nix package into
+# ~/.nix-profile/share/terminfo/. TERMINFO_DIRS (set in home.sessionVariables)
+# points there so SSH sessions from Ghostty find it without extra steps.
+if [[ -f "${HOME}/.nix-profile/share/terminfo/x/xterm-ghostty" ]]; then
+  info "Ghostty terminfo present (SSH from Ghostty will work)."
+else
+  warn "xterm-ghostty terminfo not found — Home Manager step may not have run yet"
+fi
+
+# ── Step 7: Commit flake.lock ─────────────────────────────────────────────────
 if [[ -f "${FLAKE_DIR}/flake.lock" ]] && command -v git &>/dev/null; then
   if git -C "${FLAKE_DIR}" status --porcelain flake.lock 2>/dev/null | grep -q .; then
     warn "flake.lock was generated/updated. Commit it to pin package versions:"

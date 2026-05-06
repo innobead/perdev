@@ -118,7 +118,9 @@ elif rustup toolchain list 2>/dev/null | grep -q "^stable"; then
 else
   echo "Installing Rust stable toolchain..."
   if rustup toolchain install stable \
-       --component rust-analyzer rustfmt clippy \
+       --component rust-analyzer \
+       --component rustfmt \
+       --component clippy \
      && rustup default stable; then
     pass "Rust" "$(rustc --version 2>/dev/null || true)"
   else
