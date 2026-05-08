@@ -208,12 +208,17 @@
       skopeo   # OCI image inspect / copy / sign
     ]
 
-    # ── macOS container tools (Docker CE runs inside Colima VM) ───────────
-    ++ lib.optionals isDarwin [
-      colima          # Docker-compatible runtime via Apple VZ (replaces Docker Desktop)
-      docker-client   # Docker CLI — connects to Colima's socket
+    # ── Cross-platform container / VM tools ───────────────────────────────
+    ++ [
+      lima            # Linux/Mac VMs via QEMU
+      colima          # Docker-compatible runtime via VMs (Apple VZ on macOS, QEMU on Linux)
+      docker-client   # Docker CLI — connects to Colima or Docker CE socket
       docker-buildx   # Multi-platform image builds
       docker-compose  # Compose CLI v2
+    ]
+
+    # ── macOS-only container tools ────────────────────────────────────────
+    ++ lib.optionals isDarwin [
       container       # Apple Container CLI (native Apple VF, aarch64-darwin only)
     ];
 
