@@ -28,7 +28,6 @@ if (which direnv | is-not-empty) {
 }
 
 # ── Aliases ───────────────────────────────────────────────────────────────────
-alias ls   = eza --icons --group-directories-first
 alias ll   = eza --icons --group-directories-first -la
 alias lt   = eza --icons --group-directories-first --tree -L 2
 alias cat  = bat
