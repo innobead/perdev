@@ -1,0 +1,53 @@
+#cloud-config
+# cloud-init.yaml — Provision a new Ubuntu server or keep an existing one updated.
+#
+# First boot:  clones this repo and runs setup.sh end-to-end.
+# Every reboot: pulls the latest repo changes and re-runs setup.sh (idempotent —
+#               already-installed steps are skipped; new steps are applied).
+#
+# Usage (AWS / DigitalOcean / Hetzner / etc.):
+#   Pass this file as the instance user-data at creation time.
+#
+# Follow progress:
+#   journalctl -u perdev-setup -f
+#   tail -f /var/log/perdev-setup.log
+
+# git and curl must be present before cloning and running setup.sh
+packages:
+  - git
+  - curl
+
+# Systemd service written on first boot and enabled for all subsequent boots.
+# ExecStartPre pulls the latest repo; ExecStart re-runs setup.sh.
+write_files:
+  - path: /etc/systemd/system/perdev-setup.service
+    owner: root:root
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=perdev — apply dev environment updates on boot
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      User=ubuntu
+      ExecStartPre=/bin/bash -c 'git -C /home/ubuntu/perdev pull 2>/dev/null || true'
+      ExecStart=/bin/bash /home/ubuntu/perdev/setup.sh
+      StandardOutput=append:/var/log/perdev-setup.log
+      StandardError=append:/var/log/perdev-setup.log
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # Clone the repo as the ubuntu user; fall back to pull if already cloned.
+  - su -l ubuntu -c 'git clone https://github.com/innobead/perdev.git /home/ubuntu/perdev 2>/dev/null || git -C /home/ubuntu/perdev pull'
+  # Register the service so it auto-starts on every reboot.
+  - systemctl daemon-reload
+  - systemctl enable perdev-setup.service
+  # Kick off first-boot provisioning through the service (same path as reboots).
+  - systemctl start perdev-setup.service
+
+final_message: "perdev provisioning started. Follow: journalctl -u perdev-setup -f"
