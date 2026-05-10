@@ -146,7 +146,9 @@ if $IS_MAC; then
   fi
 else
   # Ubuntu: Docker CE via official apt repo
-  if command -v docker &>/dev/null; then
+  # Check for dockerd (the daemon), not just the CLI — Nix provides a docker
+  # CLI-only package which would cause a false-positive here.
+  if command -v dockerd &>/dev/null && dpkg -l docker-ce 2>/dev/null | grep -q '^ii'; then
     skip "Docker CE" "already installed — $(docker --version)"
   else
     echo "Installing Docker CE via apt..."
