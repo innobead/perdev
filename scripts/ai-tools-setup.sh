@@ -47,24 +47,22 @@ fi
 if command -v gh &>/dev/null; then
   if gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
     info "GitHub Copilot extension already installed."
-  else
+  elif gh auth status &>/dev/null; then
     info "Installing GitHub Copilot CLI extension..."
-    gh extension install github/gh-copilot
+    gh extension install github/gh-copilot || warn "gh extension install failed"
+  else
+    warn "gh CLI not authenticated — skipping Copilot extension install."
+    warn "Run: gh auth login"
   fi
 else
   warn "gh CLI not found in PATH — skipping Copilot extension install."
-  warn "(gh is managed by Nix; try opening a new shell after install.sh)"
 fi
 
 # ── Step 5: LLM plugins ───────────────────────────────────────────────────────
-# The `llm` binary is installed via Nix (home.nix). Plugins extend it with
-# support for Claude, Gemini, and local Ollama models.
+# LLM plugins are managed by Nix (home.nix) via llm.withPlugins.
 if command -v llm &>/dev/null; then
-  info "Installing LLM plugins..."
-  llm install llm-claude-3 2>/dev/null || warn "llm-claude-3 install failed (may already be installed)"
-  llm install llm-gemini 2>/dev/null   || warn "llm-gemini install failed (may already be installed)"
-  llm install llm-ollama 2>/dev/null   || warn "llm-ollama install failed (may already be installed)"
-  info "LLM plugins installed. Configure API keys with:"
+  info "LLM plugins (Claude, Gemini, Ollama) are managed via Nix."
+  info "Configure API keys with:"
   info "  llm keys set claude   # prompts for ANTHROPIC_API_KEY"
   info "  llm keys set gemini   # prompts for GEMINI_API_KEY"
 else

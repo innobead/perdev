@@ -57,13 +57,21 @@ section() {
 # ── Env sourcing helpers ──────────────────────────────────────────────────────
 source_nix() {
   local f="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
-  [[ -f "$f" ]] && source "$f" 2>/dev/null || true
+  if [[ -f "$f" ]]; then
+    set +u
+    source "$f" 2>/dev/null || true
+    set -u
+  fi
   export PATH="/nix/var/nix/profiles/default/bin:${PATH:-}"
 }
 
 source_hm() {
   local f="${HOME}/.nix-profile/etc/profile.d/hm-session-vars.sh"
-  [[ -f "$f" ]] && source "$f" 2>/dev/null || true
+  if [[ -f "$f" ]]; then
+    set +u
+    source "$f" 2>/dev/null || true
+    set -u
+  fi
   export PATH="${HOME}/.nix-profile/bin:${HOME}/.local/bin:${PATH:-}"
 }
 
@@ -101,7 +109,7 @@ if nix run nixpkgs#home-manager -- switch \
      --flake "${REPO_DIR}#${HM_PROFILE}" \
      --impure \
      -b bak \
-     -v 2>&1; then
+     -v; then
   source_hm
   pass "Home Manager"
 else
@@ -197,7 +205,7 @@ fi
 if command -v gh &>/dev/null; then
   if gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
     skip "gh copilot" "already installed"
-  else
+  elif gh auth status &>/dev/null; then
     echo "Installing GitHub Copilot extension..."
     if gh extension install github/gh-copilot 2>/dev/null; then
       pass "gh copilot"
@@ -205,6 +213,8 @@ if command -v gh &>/dev/null; then
       fail "gh copilot" "gh extension install failed"
       _ai_ok=false
     fi
+  else
+    skip "gh copilot" "gh CLI not authenticated (run: gh auth login)"
   fi
 else
   fail "gh copilot" "gh CLI not found"
@@ -212,13 +222,9 @@ else
 fi
 
 # LLM plugins
+# LLM plugins are managed by Nix (home.nix) via llm.withPlugins.
 if command -v llm &>/dev/null; then
-  echo "Installing LLM plugins..."
-  for plugin in llm-claude-3 llm-gemini llm-ollama; do
-    llm install "$plugin" 2>/dev/null \
-      && pass "LLM plugin: $plugin" \
-      || skip "LLM plugin: $plugin" "already installed or failed"
-  done
+  pass "LLM plugins" "managed via Nix"
 else
   fail "LLM plugins" "llm not found — Home Manager step may have failed"
   _ai_ok=false

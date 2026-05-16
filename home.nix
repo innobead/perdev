@@ -101,8 +101,8 @@
   };
 
   programs.git = {
-    enable      = true;
-    extraConfig = {
+    enable   = true;
+    settings = {
       init.defaultBranch   = "main";
       pull.rebase          = true;
       push.autoSetupRemote = true;
@@ -114,6 +114,8 @@
     enable        = true;
     defaultEditor = true;
     vimAlias      = true;
+    withRuby      = false;
+    withPython3   = false;
   };
 
   # ── Direnv (per-directory envs; nix-direnv caches nix evaluations) ────────
@@ -192,7 +194,11 @@
       tilt  # fast iterative Kubernetes dev loop (Tiltfile hot-reload)
 
       # ── AI tools (both platforms) ─────────────────────────────────────
-      llm     # universal LLM CLI — plugins: llm-claude-3, llm-gemini, llm-ollama
+      (llm.withPlugins {
+        llm-anthropic = true;
+        llm-gemini    = true;
+        llm-ollama    = true;
+      })
       ollama  # local LLM server — pull models: ollama pull llama3.2
       # claude-code  # uncomment once nixpkgs package name is verified
       # gemini-cli   # uncomment once nixpkgs package name is verified
