@@ -173,6 +173,7 @@
       just age sops mkcert
       httpie curlie grpcurl
       htop dust procs
+      vhs ffmpeg ttyd
 
       # ── Go ────────────────────────────────────────────────────────────
       go gopls golangci-lint delve
