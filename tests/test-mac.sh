@@ -125,6 +125,7 @@ check "ollama"          "ollama"           ollama    --version
 check "llm"             "llm"             llm       --version
 
 # CLI utilities
+check "vhs"             "vhs"             vhs       --version
 check "ripgrep"         "ripgrep"          rg        --version
 check "fd"              "fd"              fd        --version
 check "bat"             "bat"             bat       --version
