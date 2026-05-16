@@ -93,7 +93,7 @@ verify:
     @echo "=== Containers (platform-specific) ==="
     @if [ "$(uname -s)" = "Darwin" ]; then \
         colima status 2>/dev/null || echo "colima: not running (run: just docker-mac)"; \
-        docker version --format '{{.Client.Version}}' 2>/dev/null || echo "docker: needs colima"; \
+        docker --version 2>/dev/null || echo "docker: needs colima"; \
         container --version 2>/dev/null || echo "container: not installed (Apple Silicon only)"; \
     else \
         podman --version; \
@@ -103,4 +103,6 @@ verify:
     @llm --version
     @ollama --version
     @claude --version 2>/dev/null || echo "claude: not installed (run: just ai)"
+    @vhs --version
     @echo "=== Done ==="
+
