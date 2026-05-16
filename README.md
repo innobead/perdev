@@ -48,7 +48,7 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 | [RTK](https://github.com/rtk-ai/rtk) | `curl` / `brew` | CLI output filter — strips noise before it hits the LLM (60–90% savings) |
 
 ### CLI utilities
-`ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
+`vhs` · `ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
 
 ---
 
