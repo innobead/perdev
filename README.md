@@ -138,39 +138,75 @@ perdev/
 
 ---
 
-## Common operations
+## Managing packages
+
+### Common operations
+
+If you have the repository cloned locally, use these `just` commands:
 
 ```bash
-just switch          # re-apply home.nix after editing (auto-detects platform)
-just update          # update all flake inputs to latest
-just rollback        # list generations; roll back if something broke
+just switch          # re-apply home.nix after editing
+just update          # update all flake inputs to latest (updates flake.lock)
+just rollback        # list generations and pick one to roll back to
 just verify          # quick sanity-check of installed tools
-just ollama-models   # pull llama3.2 and deepseek-coder-v2
+just setup           # re-run the full idempotent setup
 just uninstall       # remove everything installed by setup.sh
 ```
 
 ### Adding or removing a package
 
-Edit `home.nix`, then run:
+Edit `home.packages` in `home.nix`, then run:
 
 ```bash
 just switch
 ```
 
-### Pinning versions
+### Updating without a local clone
 
-After the first `install.sh` run, commit `flake.lock` to pin exact package versions across machines:
+If you've installed the environment but don't have the `perdev` folder locally, you can update directly from GitHub:
 
+**macOS:**
 ```bash
-git add flake.lock
-git commit -m "lock flake inputs"
+nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#mac --impure
 ```
 
-Update all inputs to latest:
+**Ubuntu:**
+```bash
+nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#ubuntu --impure
+```
+
+### Forcing the absolute latest versions
+
+To bypass the `flake.lock` pinned in the repository and fetch the latest versions available in the `nixpkgs` registry, add the `--recreate-lock-file` flag to the `nix run` command:
 
 ```bash
-just update && just switch
+nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#mac --impure --recreate-lock-file
 ```
+
+---
+
+## Nix behavior & rollbacks
+
+### The "Source of Truth"
+The `flake.lock` file in this repository acts as the single source of truth. It pins every package to a specific, tested version. 
+
+**Atomic Syncing:** If you force an update to newer versions (using `--recreate-lock-file`) and later run a standard update against this repo, Nix will safely and instantly "downgrade" your environment back to the pinned versions. It does this by simply repointing symbolic links in your `$PATH` to the older versions already stored in the `/nix/store`.
+
+### Generations & Rollbacks
+Every time you `switch` your configuration, Home Manager creates a new **Generation**. This allows you to instantly revert to a previous state if an update breaks something.
+
+- **List generations:**
+  ```bash
+  home-manager generations
+  ```
+- **Roll back to a specific generation:**
+  ```bash
+  home-manager switch --generation <number>
+  ```
+- **Cleanup:** To remove old generations and free up disk space:
+  ```bash
+  nix-collect-garbage -d
+  ```
 
 ---
 
