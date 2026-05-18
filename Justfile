@@ -54,6 +54,22 @@ switch:
 rollback:
     home-manager generations
 
+# Show package version changes between the last two Home Manager generations
+diff:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    current=$(home-manager generations | head -n 1 | cut -d' ' -f5)
+    prev=$((current - 1))
+    if [ "$prev" -lt 1 ]; then
+        echo "No previous generation found to diff against."
+        exit 0
+    fi
+    profile_dir="$HOME/.local/state/nix/profiles"
+    if [ ! -d "$profile_dir" ]; then
+        profile_dir="/nix/var/nix/profiles/per-user/$USER"
+    fi
+    nvd diff "$profile_dir/home-manager-$prev-link" "$profile_dir/home-manager"
+
 # List installed Home Manager generations
 generations:
     home-manager generations

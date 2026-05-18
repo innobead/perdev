@@ -147,6 +147,7 @@ If you have the repository cloned locally, use these `just` commands:
 ```bash
 just switch          # re-apply home.nix after editing
 just update          # update all flake inputs to latest (updates flake.lock)
+just diff            # show package version changes since the last switch
 just rollback        # list generations and pick one to roll back to
 just verify          # quick sanity-check of installed tools
 just setup           # re-run the full idempotent setup
