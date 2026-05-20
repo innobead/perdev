@@ -1,0 +1,42 @@
+name: Auto-Approve and Merge Flake Update PR
+
+on:
+  pull_request:
+    branches:
+      - main
+    # Only evaluate PRs from the flake-update branch pattern
+    paths:
+      - flake.lock
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    name: Approve and enable auto-merge
+    runs-on: ubuntu-latest
+
+    # Only run for PRs opened by github-actions[bot] from a flake-update branch.
+    # This guard prevents the job from firing on unrelated PRs that touch flake.lock.
+    if: |
+      github.actor == 'github-actions[bot]' &&
+      startsWith(github.head_ref, 'flake-update/')
+
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Approve PR
+        # hmarr/auto-approve-action@v4 (8f929096a962e83ccdfa8afcf855f39f12d4dac7)
+        # Uses AUTO_MERGE_TOKEN (fine-grained PAT scoped to this repo,
+        # Pull requests: Read and write) so the approval comes from a different
+        # identity than the one that opened the PR (GITHUB_TOKEN self-approval
+        # is blocked by GitHub).
+        uses: hmarr/auto-approve-action@8f929096a962e83ccdfa8afcf855f39f12d4dac7
+        with:
+          github-token: ${{ secrets.AUTO_MERGE_TOKEN }}
+
+      - name: Enable auto-merge (squash)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"

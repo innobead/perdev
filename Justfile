@@ -42,6 +42,9 @@ all: install
 update:
     nix flake update
 
+# Update flake inputs AND apply the new Home Manager config in one step
+upgrade: update switch
+
 # Apply updated Home Manager configuration (auto-detects platform)
 switch:
     @if [ "$(uname -s)" = "Darwin" ]; then \
