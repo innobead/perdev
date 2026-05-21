@@ -116,13 +116,13 @@ info ""
 if [[ "$IS_MAC" == "true" ]]; then
   info "macOS next steps (run in a new terminal):"
   info "  1. bash ${FLAKE_DIR}/scripts/docker-mac-setup.sh  — start Colima + Apple Container"
-  info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Copilot"
+  info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Antigravity CLI, Copilot"
   info "  3. ollama pull llama3.2                    — download a local LLM model"
   info "  4. Open Ghostty — it will launch nushell automatically"
 else
   info "Ubuntu next steps (run in a new terminal):"
   info "  1. bash ${FLAKE_DIR}/scripts/docker-setup.sh      — install Docker CE"
-  info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Copilot"
+  info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Antigravity CLI, Copilot"
   info "  3. ollama pull llama3.2                    — download a local LLM model"
   info "  4. Open Ghostty — it will launch nushell automatically"
 fi

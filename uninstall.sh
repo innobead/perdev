@@ -51,7 +51,7 @@ done
 echo -e "${R}${B}perdev uninstall — $(uname -s)${N}"
 echo ""
 echo "This will remove:"
-echo "  • AI tools: Claude Code, Gemini CLI, gh Copilot, LLM plugins, RTK"
+echo "  • AI tools: Claude Code, Gemini CLI, Antigravity CLI, gh Copilot, LLM plugins, RTK"
 echo "  • Rust stable toolchain (rustup)"
 $IS_MAC && echo "  • Colima VM and its data" || echo "  • Docker CE packages"
 echo "  • Home Manager activation (symlinks and generated configs)"
@@ -99,6 +99,16 @@ for _pkg in "@anthropic-ai/claude-code" "@google/gemini-cli"; do
     skip "bun: $_pkg" "bun not found — uninstall manually: bun remove -g $_pkg"
   fi
 done
+
+# Antigravity CLI
+if command -v agy &>/dev/null; then
+  echo "Removing Antigravity CLI..."
+  rm -f "${HOME}/.local/bin/agy" 2>/dev/null || true
+  rm -rf "${HOME}/.gemini/antigravity-cli" 2>/dev/null || true
+  pass "Antigravity CLI" "removed"
+else
+  skip "Antigravity CLI" "not installed"
+fi
 
 # GitHub Copilot extension
 if command -v gh &>/dev/null && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then

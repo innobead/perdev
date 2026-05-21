@@ -42,6 +42,7 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 |---|---|---|
 | [Claude Code](https://claude.ai/code) | npm | Anthropic's agentic coding CLI |
 | [Gemini CLI](https://github.com/google-gemini/gemini-cli) | npm | Google Gemini CLI |
+| [Antigravity CLI](https://antigravity.google) | `curl` | Official Google Antigravity CLI |
 | [GitHub Copilot](https://github.com/github/gh-copilot) | `gh` extension | Copilot in terminal |
 | [Ollama](https://ollama.com/) | Nix | Local LLM server (Llama, Mistral, Gemma, …) |
 | [LLM](https://llm.datasette.io/) | Nix | Universal LLM CLI with plugin support |

@@ -25,7 +25,7 @@ docker:
 docker-mac:
     bash scripts/docker-mac-setup.sh
 
-# Install AI tools (Claude Code, Gemini CLI, Copilot, LLM plugins, RTK)
+# Install AI tools (Claude Code, Gemini CLI, Antigravity CLI, Copilot, LLM plugins, RTK)
 ai:
     bash scripts/ai-tools-setup.sh
 
@@ -122,6 +122,7 @@ verify:
     @llm --version
     @ollama --version
     @claude --version 2>/dev/null || echo "claude: not installed (run: just ai)"
+    @agy --version 2>/dev/null || echo "agy: not installed (run: just ai)"
     @vhs --version
     @echo "=== Done ==="
 

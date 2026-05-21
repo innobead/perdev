@@ -13,7 +13,7 @@
 #   2. Home Manager — nix run nixpkgs#home-manager switch (all packages)
 #   3. Rust         — rustup toolchain install stable
 #   4. Docker       — Docker CE (Ubuntu) or Colima start (macOS)
-#   5. AI tools     — Claude Code, Gemini CLI, gh Copilot, LLM plugins, RTK
+#   5. AI tools     — Claude Code, Gemini CLI, Antigravity CLI, gh Copilot, LLM plugins, RTK
 #   6. Ollama models — pull llama3.2 if ollama daemon is reachable
 
 # Do NOT use set -e — steps are independent; failures are tracked manually.
@@ -199,6 +199,14 @@ else
   echo "Installing Gemini CLI..."
   _bun_install_g @google/gemini-cli || { fail "Gemini CLI" "bun install failed"; _ai_ok=false; }
   command -v gemini &>/dev/null && pass "Gemini CLI"
+fi
+
+# Antigravity CLI
+if command -v agy &>/dev/null; then
+  skip "Antigravity CLI" "already installed"
+else
+  echo "Installing Antigravity CLI..."
+  curl -fsSL https://antigravity.google/cli/install.sh | bash && pass "Antigravity CLI" || { fail "Antigravity CLI" "install failed"; _ai_ok=false; }
 fi
 
 # GitHub Copilot extension

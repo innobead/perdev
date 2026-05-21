@@ -6,6 +6,7 @@
 # Installs:
 #   - Claude Code CLI (@anthropic-ai/claude-code) via npm
 #   - Gemini CLI (@google/gemini-cli) via npm
+#   - Antigravity CLI (agy) via curl
 #   - GitHub Copilot extension via gh CLI
 #   - LLM plugins (llm-claude-3, llm-gemini, llm-ollama) via pip/uvx
 #   - RTK (Rust Token Killer) — filters CLI output noise before it hits the LLM
@@ -86,6 +87,14 @@ if command -v rtk &>/dev/null; then
   rtk init -g 2>/dev/null || warn "rtk init -g failed — restart Claude Code after setup"
 fi
 
+# ── Step 7: Antigravity CLI ──────────────────────────────────────────────────
+if command -v agy &>/dev/null; then
+  info "Antigravity CLI already installed: $(agy --version 2>/dev/null || echo 'installed')"
+else
+  info "Installing Antigravity CLI..."
+  curl -fsSL https://antigravity.google/cli/install.sh | bash
+fi
+
 
 echo ""
 info "AI tools setup complete!"
@@ -101,6 +110,7 @@ info "    ollama pull deepseek-r1    # ~4GB, great for coding"
 info ""
 info "  Test Claude Code:   claude --help"
 info "  Test Gemini CLI:    gemini --help"
+info "  Test Antigravity:   agy --help"
 info "  Test LLM:           llm -m claude-3-5-haiku 'hello'"
 info "  Test Ollama:        ollama run llama3.2"
 info "  Test gh Copilot:    gh copilot suggest 'list all pods in a namespace'"
