@@ -155,6 +155,20 @@ just setup           # re-run the full idempotent setup
 just uninstall       # remove everything installed by setup.sh
 ```
 
+### Automatic updating
+
+The easiest way to update your workstation environment to the latest repository configuration is using the `perdev-update` command, which is automatically added to your shell's `PATH`:
+
+```bash
+perdev-update
+```
+
+* **How it works:** It checks if a local repository clone exists in `~/.local/share/perdev`. If it doesn't exist, it automatically clones the repository there. It then pulls the latest changes from `origin/main` and applies them using Home Manager.
+* **Force upgrade packages:** To bypass the pinned `flake.lock` and upgrade all packages to the absolute latest versions available in the Nix registry:
+  ```bash
+  perdev-update --upgrade  # or -u
+  ```
+
 ### Adding or removing a package
 
 Edit `home.packages` in `home.nix`, then run:

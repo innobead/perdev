@@ -247,5 +247,10 @@
     "${config.home.homeDirectory}/.bun/bin"
   ];
 
+  home.file.".local/bin/perdev-update" = {
+    source = ./scripts/perdev-update.sh;
+    executable = true;
+  };
+
   xdg.enable = true;
 }
