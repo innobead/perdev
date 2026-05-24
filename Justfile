@@ -39,7 +39,7 @@ update:
     fi
     git merge origin/main
     if [ "$(uname -s)" = "Darwin" ]; then
-        nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
+        sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
           || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
     else
         nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
@@ -51,7 +51,7 @@ local-update:
     set -euo pipefail
     nix flake update
     if [ "$(uname -s)" = "Darwin" ]; then
-        nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
+        sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
           || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
     else
         nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
