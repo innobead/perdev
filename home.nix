@@ -244,9 +244,8 @@
   };
 
   home.sessionPath = [
-    # Nix profile bins must come first so HM-generated integration snippets
-    # (atuin init, zoxide init) find their binaries before extraEnv runs.
-    # Critical when Ghostty launches nu directly (no inherited bash PATH).
+    # Applied only for POSIX login shells (bash/zsh via ~/.profile).
+    # nushell PATH is set explicitly in configs/nushell/env.nu instead.
     "/nix/var/nix/profiles/default/bin"
     "${config.home.homeDirectory}/.nix-profile/bin"
     "${config.home.homeDirectory}/.cargo/bin"
