@@ -139,7 +139,7 @@ _check_cmd "flux"            "fluxcd"           flux      --version
 # Container / OCI — macOS uses Colima + Apple Container instead of podman/buildah
 _check_cmd "colima"          "colima"           colima    --version
 _check_cmd "docker-client"   "docker-client"    docker    --version
-_check_cmd "docker-buildx"   "docker-buildx"    sh -c "docker buildx version &>/dev/null || docker-buildx version"
+_check_cmd "docker-buildx"   "docker-buildx"    sh -c "docker-buildx version 2>&1"
 _check_cmd "dive"            "dive"             dive      --version
 _check_cmd "crane"           "crane"            crane     version
 _check_cmd "cosign"          "cosign"           cosign    version
