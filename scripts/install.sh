@@ -63,7 +63,7 @@ if [[ "$IS_MAC" == "true" ]]; then
   # macOS: use nix-darwin for system-level config + Home Manager as a module.
   # Falls back to home-manager only if darwin-rebuild is unavailable.
   info "Applying nix-darwin config for macOS (user: $USER)..."
-  if sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
+  if nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
        --flake "${FLAKE_DIR}#mac" \
        --impure; then
     info "nix-darwin configuration applied."
