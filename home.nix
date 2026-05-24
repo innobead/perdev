@@ -87,7 +87,7 @@
       command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
-      theme         = "catppuccin-mocha";
+      theme         = "Catppuccin Mocha";
     } // lib.optionalAttrs (!isDarwin) {
       # GTK/Wayland window decoration — Linux only
       "window-decoration" = "server";
