@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# setup.sh — Single entrypoint to provision the full development environment.
+# setup.sh — PRIMARY entrypoint. Provisions the full development environment.
 #
-# Runs all steps in sequence, continues past individual failures, and prints
-# a summary at the end. Safe to re-run: every step checks before acting.
+# Preferred over scripts/install.sh for initial setup — covers all steps in
+# one run, continues past individual failures, and prints a summary.
+# Safe to re-run: every step checks before acting.
 #
 # Usage:
 #   bash setup.sh          # first run or re-run to retry failed steps
@@ -102,19 +103,49 @@ else
   fi
 fi
 
-# ══ Step 2: Home Manager (all packages) ══════════════════════════════════════
-section "2/6  Home Manager — nix run"
-echo "Profile: ${HM_PROFILE}  (applies home.nix — installs all packages)"
-if nix run nixpkgs#home-manager -- switch \
-     --flake "${REPO_DIR}#${HM_PROFILE}" \
-     --impure \
-     -b bak \
-     -v; then
-  source_hm
-  pass "Home Manager"
+# ══ Step 2: nix-darwin (macOS) or Home Manager (Linux) ═══════════════════════
+if $IS_MAC; then
+  section "2/6  nix-darwin + Home Manager — darwin-rebuild"
+  echo "Profile: mac  (darwin.nix + home.nix — system defaults, Homebrew, all packages)"
+  if nix run nix-darwin#darwin-rebuild -- switch \
+       --flake "${REPO_DIR}#mac" \
+       --impure \
+       -v 2>/dev/null || \
+     nix --extra-experimental-features "nix-command flakes" \
+       run "github:LnL7/nix-darwin#darwin-rebuild" -- switch \
+       --flake "${REPO_DIR}#mac" \
+       --impure 2>/dev/null; then
+    source_hm
+    pass "nix-darwin + Home Manager"
+  else
+    # Fallback: home-manager only (skips system-level darwin config)
+    echo "darwin-rebuild unavailable — falling back to home-manager switch..."
+    if nix run nixpkgs#home-manager -- switch \
+         --flake "${REPO_DIR}#mac" \
+         --impure \
+         -b bak \
+         -v; then
+      source_hm
+      pass "Home Manager (nix-darwin fallback)"
+    else
+      fail "Home Manager" "switch failed — packages may be partially installed"
+      source_hm
+    fi
+  fi
 else
-  fail "Home Manager" "switch failed — packages may be partially installed"
-  source_hm  # source whatever was applied before the failure
+  section "2/6  Home Manager — nix run"
+  echo "Profile: ${HM_PROFILE}  (applies home.nix — installs all packages)"
+  if nix run nixpkgs#home-manager -- switch \
+       --flake "${REPO_DIR}#${HM_PROFILE}" \
+       --impure \
+       -b bak \
+       -v; then
+    source_hm
+    pass "Home Manager"
+  else
+    fail "Home Manager" "switch failed — packages may be partially installed"
+    source_hm  # source whatever was applied before the failure
+  fi
 fi
 
 # ══ Step 3: Rust stable toolchain ════════════════════════════════════════════

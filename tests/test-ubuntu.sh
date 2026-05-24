@@ -99,10 +99,25 @@ echo ""
 
 PASS=0; FAIL=0
 
-check() {
+# _check_cmd runs the binary with a 60s background-kill guard, safe under set -euo pipefail.
+# - rc is captured via if/else (not cmd; rc=$?) to avoid errexit on non-zero wait
+# - killer wait uses || true since we killed it ourselves (returns 128+TERM)
+# - killer kill uses || true since killer may have already exited (when timeout fires first)
+_check_cmd() {
   local label="$1" pkg="$2"; shift 2
+  local tmpout rc pid killer
+  tmpout=$(mktemp)
+  nix shell "nixpkgs#$pkg" --command "$@" >"$tmpout" 2>/dev/null &
+  pid=$!
+  ( sleep 60 && kill "$pid" 2>/dev/null ) &
+  killer=$!
+  if wait "$pid" 2>/dev/null; then rc=0; else rc=$?; fi
+  kill "$killer" 2>/dev/null || true   # killer may have already exited (timeout fired)
+  wait "$killer" 2>/dev/null || true   # we killed it; 128+TERM is expected
   local out
-  if out=$(nix shell "nixpkgs#$pkg" --command "$@" 2>/dev/null | head -1); then
+  out=$(head -1 "$tmpout")
+  rm -f "$tmpout"
+  if [[ $rc -eq 0 && -n "$out" ]]; then
     echo -e "  ${G}✓${N} $label: $out"
     ((PASS++)) || true
   else
@@ -112,57 +127,57 @@ check() {
 }
 
 # Shell & terminal
-check "nushell"          "nushell"           nu         --version
-check "starship"         "starship"          starship   --version
-check "carapace"         "carapace"          carapace   --version
-check "zoxide"           "zoxide"            zoxide     --version
-check "atuin"            "atuin"             atuin      --version
+_check_cmd "nushell"          "nushell"           nu         --version
+_check_cmd "starship"         "starship"          starship   --version
+_check_cmd "carapace"         "carapace"          carapace   --version
+_check_cmd "zoxide"           "zoxide"            zoxide     --version
+_check_cmd "atuin"            "atuin"             atuin      --version
 
 # Dev toolchains
-check "go"               "go"                go         version
-check "rustup"           "rustup"            rustup     --version
-check "python3"          "python3"           python3    --version
-check "uv"               "uv"               uv         --version
-check "bun"              "bun"               bun        --version
+_check_cmd "go"               "go"                go         version
+_check_cmd "rustup"           "rustup"            rustup     --version
+_check_cmd "python3"          "python3"           python3    --version
+_check_cmd "uv"               "uv"               uv         --version
+_check_cmd "bun"              "bun"               bun        --version
 
 # Kubernetes
-check "kubectl"          "kubectl"           kubectl    version --client
-check "helm"             "kubernetes-helm"   helm       version --short
-check "kind"             "kind"             kind       version
-check "k9s"              "k9s"              k9s        version
-check "tilt"             "tilt"             tilt       version
-check "kubectx"          "kubectx"           kubectx    --version 2>/dev/null || true
-check "kustomize"        "kustomize"         kustomize  version
-check "flux"             "fluxcd"            flux       --version
+_check_cmd "kubectl"          "kubectl"           kubectl    version --client
+_check_cmd "helm"             "kubernetes-helm"   helm       version --short
+_check_cmd "kind"             "kind"             kind       version
+_check_cmd "k9s"              "k9s"              k9s        version
+_check_cmd "tilt"             "tilt"             tilt       version
+_check_cmd "kubectx"          "kubectx"           kubectx    --version 2>/dev/null || true
+_check_cmd "kustomize"        "kustomize"         kustomize  version
+_check_cmd "flux"             "fluxcd"            flux       --version
 
 # Containers / OCI
-check "podman"           "podman"            podman     --version
-check "buildah"          "buildah"           buildah    --version
-check "skopeo"           "skopeo"            skopeo     --version
-check "dive"             "dive"              dive       --version
-check "crane"            "crane"             crane      version
-check "cosign"           "cosign"            cosign     version
-check "lazydocker"       "lazydocker"        lazydocker --version 2>/dev/null || true
+_check_cmd "podman"           "podman"            podman     --version
+_check_cmd "buildah"          "buildah"           buildah    --version
+_check_cmd "skopeo"           "skopeo"            skopeo     --version
+_check_cmd "dive"             "dive"              dive       --version
+_check_cmd "crane"            "crane"             crane      version
+_check_cmd "cosign"           "cosign"            cosign     version
+_check_cmd "lazydocker"       "lazydocker"        lazydocker --version 2>/dev/null || true
 
 # AI tools
-check "ollama"           "ollama"            ollama     --version
-check "llm"              "llm"              llm        --version
+_check_cmd "ollama"           "ollama"            ollama     help
+_check_cmd "llm"              "llm"              llm        --version
 
 # CLI utilities
-check "vhs"              "vhs"               vhs        --version
-check "ripgrep"          "ripgrep"           rg         --version
-check "fd"               "fd"               fd         --version
-check "bat"              "bat"              bat        --version
-check "eza"              "eza"              eza        --version
-check "jq"               "jq"              jq         --version
-check "just"             "just"             just       --version
-check "neovim"           "neovim"           nvim       --version
-check "lazygit"          "lazygit"          lazygit    --version
-check "delta"            "delta"            delta      --version
-check "tmux"             "tmux"             tmux       -V
-check "direnv"           "direnv"           direnv     --version
-check "age"              "age"             age        --version
-check "sops"             "sops"             sops       --version
+_check_cmd "vhs"              "vhs"               vhs        --version
+_check_cmd "ripgrep"          "ripgrep"           rg         --version
+_check_cmd "fd"               "fd"               fd         --version
+_check_cmd "bat"              "bat"              bat        --version
+_check_cmd "eza"              "eza"              eza        --version
+_check_cmd "jq"               "jq"              jq         --version
+_check_cmd "just"             "just"             just       --version
+_check_cmd "neovim"           "neovim"           nvim       --version
+_check_cmd "lazygit"          "lazygit"          lazygit    --version
+_check_cmd "delta"            "delta"            delta      --version
+_check_cmd "tmux"             "tmux"             tmux       -V
+_check_cmd "direnv"           "direnv"           direnv     --version
+_check_cmd "age"              "age"             age        --version
+_check_cmd "sops"             "sops"             sops       --version
 
 echo ""
 echo -e "Results: ${G}${PASS} passed${N}  ${FAIL} failed"

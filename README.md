@@ -1,8 +1,35 @@
 # perdev
 
-Reproducible development workstation provisioning for **Ubuntu** and **macOS** (Apple Silicon), built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager).
+Reproducible development workstation provisioning for **Ubuntu** and **macOS** (Apple Silicon), built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/LnL7/nix-darwin).
 
 Declare tools once in `home.nix`, bootstrap any new machine with one command, and get an identical environment every time — pinned versions via `flake.lock`.
+
+---
+
+## Quick start
+
+### One-line install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/scripts/perdev-update.sh | bash
+```
+
+> **Requires:** `git` and `curl` pre-installed. On macOS run `xcode-select --install` if git is missing.
+
+This downloads and runs `perdev-update`, which:
+1. Clones the repo to `~/.local/share/perdev`
+2. Installs Nix (Determinate Systems installer) if not present
+3. Applies the full Home Manager (+ nix-darwin on macOS) configuration
+
+After it completes, open a **new shell** — all tools are ready.
+
+### Or clone and run directly
+
+```bash
+git clone https://github.com/innobead/perdev.git ~/perdev
+cd ~/perdev
+bash setup.sh
+```
 
 ---
 
@@ -62,37 +89,7 @@ Two levers cut Claude Code API costs significantly:
 | CLI output | **RTK** | Strips progress bars, passing tests, verbose logs before they enter the context window | 60–90% on noisy commands |
 | Session effort | **`/effort`** | Lower effort level reduces thinking-token budget for simple tasks | variable |
 
-RTK is wired up automatically via a Claude Code hook (`rtk init -g`, run by `just ai`). All Bash tool calls are transparently rewritten through `rtk` to filter noise before it hits the LLM.
-
----
-
-## Quick start
-
-```bash
-git clone https://github.com/innobead/perdev.git ~/perdev
-cd ~/perdev
-bash setup.sh
-```
-
-> **Requires:** `git` pre-installed. On Ubuntu it's usually present; on macOS run `xcode-select --install` if missing.
-
-`setup.sh` is the single entrypoint — it runs all six steps in sequence (Nix → Home Manager → Rust → Docker → AI tools → Ollama), is idempotent (safe to re-run), and prints a pass/skip/fail summary at the end.
-
-After `setup.sh` completes, open a **new shell** and pull a local LLM model:
-
-```bash
-ollama pull llama3.2        # ~2 GB, fast
-ollama pull deepseek-coder-v2
-```
-
-Or use `just` (installed by Nix) to run individual steps:
-
-```bash
-just setup       # re-run the full setup
-just docker      # Ubuntu: Docker CE only
-just docker-mac  # macOS: Colima only
-just ai          # AI tools only
-```
+RTK is wired up automatically via a Claude Code hook (`rtk init -g`, run by `scripts/ai-tools-setup.sh`). All Bash tool calls are transparently rewritten through `rtk` to filter noise before it hits the LLM.
 
 ---
 
@@ -101,22 +98,90 @@ just ai          # AI tools only
 ```
 perdev/
 ├── flake.nix              # Nix flake — defines ubuntu and mac profiles
+├── flake.lock             # Pinned package versions
 ├── home.nix               # Home Manager config — all packages and programs
-├── Justfile               # Short command aliases
+├── darwin.nix             # nix-darwin config — macOS system defaults, Homebrew
+├── setup.sh               # Full setup entrypoint (all steps)
+├── uninstall.sh           # Remove everything installed by perdev
+├── justfile               # Developer command aliases (just <recipe>)
 ├── configs/
 │   ├── nushell/
-│   │   ├── env.nu         # PATH, env vars, BUN_INSTALL
-│   │   └── config.nu      # Settings, aliases, direnv/Ghostty hooks
+│   │   ├── env.nu         # PATH, env vars
+│   │   └── config.nu      # Settings, aliases, direnv hook
 │   └── ghostty/
-│       └── config         # Reference docs (canonical config is in home.nix)
+│       └── config         # Reference config docs
 ├── scripts/
-│   ├── install.sh         # Bootstrap — installs Nix, applies Home Manager
+│   ├── perdev-update.sh   # Installed to ~/.local/bin/perdev-update
+│   ├── install.sh         # Minimal Nix + HM bootstrap (used by setup.sh)
 │   ├── docker-setup.sh    # Ubuntu: Docker CE via apt
 │   ├── docker-mac-setup.sh# macOS: start Colima, verify Apple Container
 │   └── ai-tools-setup.sh  # npm + gh extension AI tools
 └── tests/
-    ├── test-ubuntu.sh     # Spins up Ubuntu container, validates full config
-    └── test-mac.sh        # Runs directly on macOS, validates mac config
+    ├── test-ubuntu.sh     # Ubuntu container validation
+    └── test-mac.sh        # macOS direct validation
+```
+
+---
+
+## Managing your environment
+
+### `perdev-update` — the main tool
+
+After install, `perdev-update` is on your PATH. It manages the full lifecycle:
+
+```bash
+perdev-update                 # upgrade: pull latest config + reapply
+perdev-update --reinstall     # wipe and reinstall from scratch
+perdev-update --local-update  # bump all Nix packages to latest versions
+perdev-update --rollback      # roll back to the previous generation
+perdev-update --rollback 42   # roll back to a specific generation number
+perdev-update --diff          # show what changed in the last switch
+perdev-update --diff 42       # diff generation 42 against current
+perdev-update --generations   # list all Home Manager generations
+```
+
+### `just` — developer shortcuts
+
+If you have the repository cloned locally, `just` provides shortcuts:
+
+```bash
+just install          # smart install/upgrade (or: just install force=true to reinstall)
+just update           # pull latest config from git + reapply
+just local-update     # nix flake update + reapply (bumps package pins)
+just uninstall        # remove everything
+just rollback         # roll back to previous generation
+just rollback 42      # roll back to generation 42
+just diff             # show changes since last switch
+just diff 42          # diff generation 42 against current
+just generations      # list all generations
+just test-mac         # run macOS provisioning tests
+just test-ubuntu      # run Ubuntu provisioning tests (Docker required)
+```
+
+### Adding or removing a package
+
+Edit `home.packages` in `home.nix`, then run:
+
+```bash
+perdev-update --local-update   # apply immediately from local repo
+# or
+just local-update
+```
+
+### Generations & rollbacks
+
+Every `switch` creates a new Home Manager generation — a complete, atomic snapshot of your environment. Roll back instantly if something breaks:
+
+```bash
+perdev-update --generations    # list all generations
+perdev-update --rollback       # revert to previous
+perdev-update --rollback 42    # revert to a specific generation
+```
+
+To free up disk space from old generations:
+
+```bash
+nix-collect-garbage -d
 ```
 
 ---
@@ -127,116 +192,20 @@ perdev/
 
 - **Ghostty** uses `pkgs.ghostty` directly. On Mesa/Intel GPUs this works without extra setup. For NVIDIA, install [nixGL](https://github.com/nix-community/nixGL) separately and wrap the binary manually.
 - **Docker** is installed via the official apt repository (`scripts/docker-setup.sh`) — `pkgs.docker` from Nix does not integrate with Ubuntu's systemd correctly.
-- **Nushell** is set as the terminal shell via `programs.ghostty.settings.command`. Bash stays as the login shell and runs `exec nu` for interactive sessions, avoiding desktop login issues.
+- **Nushell** is set as the terminal shell via `programs.ghostty.settings.command`. Bash stays as the login shell for compatibility.
 - **Ollama** runs as a `systemd` user service and starts automatically on login.
 
 ### macOS (Apple Silicon)
 
+- **nix-darwin** manages system-level settings (Dock, Finder, keyboard, Homebrew) declaratively via `darwin.nix`. The flake exposes `darwinConfigurations.mac`.
 - **Ghostty** uses `pkgs.ghostty-bin` (pre-built) — the source build is broken on Darwin.
 - **Docker** runs inside a [Colima](https://github.com/abiosoft/colima) VM (Apple VZ backend). `docker` CLI commands work normally against Colima's socket.
-- **Apple Container** (`container` CLI) is Apple's native OCI tool using the Apple Virtualization framework — separate from Docker, requires Apple Silicon.
+- **Apple Container** (`container` CLI) is Apple's native OCI tool — separate from Docker, requires Apple Silicon.
 - **Ollama** runs as a `launchd` user agent and starts automatically on login.
 
 ---
 
-## Managing packages
-
-### Common operations
-
-If you have the repository cloned locally, use these `just` commands:
-
-```bash
-just switch          # re-apply home.nix after editing
-just update          # update all flake inputs to latest (updates flake.lock)
-just diff            # show package version changes since the last switch
-just rollback        # list generations and pick one to roll back to
-just verify          # quick sanity-check of installed tools
-just setup           # re-run the full idempotent setup
-just uninstall       # remove everything installed by setup.sh
-```
-
-### Automatic updating
-
-The easiest way to update your workstation environment to the latest repository configuration is using the `perdev-update` command, which is automatically added to your shell's `PATH`:
-
-```bash
-perdev-update
-```
-
-* **How it works:** It checks if a local repository clone exists in `~/.local/share/perdev`. If it doesn't exist, it automatically clones the repository there. It then pulls the latest changes from `origin/main` and applies them using Home Manager.
-* **Force upgrade packages:** To bypass the pinned `flake.lock` and upgrade all packages to the absolute latest versions available in the Nix registry:
-  ```bash
-  perdev-update --upgrade  # or -u
-  ```
-
-### Adding or removing a package
-
-Edit `home.packages` in `home.nix`, then run:
-
-```bash
-just switch
-```
-
-### Updating without a local clone
-
-If you've installed the environment but don't have the `perdev` folder locally, you can update directly from GitHub:
-
-**macOS:**
-```bash
-nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#mac --impure
-```
-
-**Ubuntu:**
-```bash
-nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#ubuntu --impure
-```
-
-### Forcing the absolute latest versions
-
-To bypass the `flake.lock` pinned in the repository and fetch the latest versions available in the `nixpkgs` registry, add the `--recreate-lock-file` flag to the `nix run` command:
-
-```bash
-nix run nixpkgs#home-manager -- switch --flake github:innobead/perdev#mac --impure --recreate-lock-file
-```
-
----
-
-## Nix behavior & rollbacks
-
-### The "Source of Truth"
-The `flake.lock` file in this repository acts as the single source of truth. It pins every package to a specific, tested version. 
-
-**Atomic Syncing:** If you force an update to newer versions (using `--recreate-lock-file`) and later run a standard update against this repo, Nix will safely and instantly "downgrade" your environment back to the pinned versions. It does this by simply repointing symbolic links in your `$PATH` to the older versions already stored in the `/nix/store`.
-
-### Generations & Rollbacks
-Every time you `switch` your configuration, Home Manager creates a new **Generation**. This allows you to instantly revert to a previous state if an update breaks something.
-
-- **List generations:**
-  ```bash
-  home-manager generations
-  ```
-- **Roll back to a specific generation:**
-  ```bash
-  home-manager switch --generation <number>
-  ```
-- **Cleanup:** To remove old generations and free up disk space:
-  ```bash
-  nix-collect-garbage -d
-  ```
-
----
-
 ## Testing
-
-### Ubuntu (in Docker)
-
-```bash
-just test-ubuntu                    # ubuntu:24.04
-just test-ubuntu-version 22.04      # specific version
-CONTAINER_CMD=podman just test-ubuntu
-```
-
-Spins up a fresh Ubuntu container, installs Nix with `--init none` (no systemd needed), builds the full Home Manager activation package to validate every package resolves, then spot-checks 40 binaries.
 
 ### macOS (runs directly — no macOS containers exist)
 
@@ -244,13 +213,21 @@ Spins up a fresh Ubuntu container, installs Nix with `--init none` (no systemd n
 just test-mac
 ```
 
-Same two-phase logic as the Ubuntu test, but runs directly on your Mac. Non-destructive: uses `--no-link` and `nix shell` only — does not switch your active Home Manager generation.
+Non-destructive: uses `nix build --no-link` and `nix shell` — does not switch your active Home Manager generation. Validates the HM config, the nix-darwin config, and spot-checks 40+ binaries.
+
+### Ubuntu (in Docker)
+
+```bash
+just test-ubuntu
+```
+
+Spins up a fresh Ubuntu container, installs Nix with `--init none` (no systemd needed), builds the full Home Manager activation package, then spot-checks 40+ binaries.
 
 ---
 
 ## Notes
 
 - **Rust**: only `rustup` is installed via Nix. Do not add `pkgs.cargo` or `pkgs.rustc` alongside it — they conflict. Use `rustup toolchain install stable` to get the compiler.
-- **JavaScript**: `bun` is installed via Nix. It serves as both the runtime and the package manager. Global packages (Claude Code, Gemini CLI) are installed with `bun install -g <pkg>` and land in `~/.bun/bin`.
-- **`claude-code` / `gemini-cli`**: commented out in `home.nix` pending nixpkgs package name verification. `scripts/ai-tools-setup.sh` installs them via npm in the meantime.
-- **`stateVersion`**: `home.stateVersion = "24.11"` does not need to match the nixpkgs channel. Do not change it unless Home Manager's migration guide instructs you to.
+- **JavaScript**: `bun` is the runtime and package manager. Global packages land in `~/.bun/bin`.
+- **`stateVersion`**: `home.stateVersion` does not need to match the nixpkgs channel. Do not change it unless Home Manager's migration guide instructs you to.
+- **Pinned versions**: `flake.lock` pins every package to a specific version. `perdev-update --local-update` (or `just local-update`) updates the pins to latest.

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
-# perdev-update — Update the perdev workstation packages to the latest configuration.
+# perdev-update — Manage your perdev workstation environment.
 #
-# This script is automatically managed and installed by Home Manager to ~/.local/bin/perdev-update.
+# Installed by Home Manager to ~/.local/bin/perdev-update.
+# Also usable as a one-line bootstrap:
+#   curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/scripts/perdev-update.sh | bash
+#
+# Behaviour when run with no flags:
+#   - If Home Manager is not yet active: runs a full install (setup.sh)
+#   - If already installed: pulls latest config from git and reapplies
 
 set -euo pipefail
 
@@ -10,88 +16,177 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-# Helper to print script usage
 usage() {
-  echo "Usage: perdev-update [OPTIONS]"
-  echo ""
-  echo "Options:"
-  echo "  -u, --upgrade  Bypass flake.lock and fetch absolute latest package versions"
-  echo "  -h, --help     Show this help message"
-  echo ""
+  cat <<EOF
+Usage: perdev-update [OPTIONS]
+
+Manage your perdev workstation environment.
+
+Options:
+  (no flags)         Install if not installed; upgrade (pull + switch) if installed
+  --reinstall        Uninstall then reinstall from scratch
+  --local-update     Update flake.lock to latest packages and reapply (no git pull)
+  --rollback [N]     Roll back to generation N (default: previous generation)
+  --diff [N]         Show package changes vs generation N (default: previous)
+  --generations      List all Home Manager generations
+  -h, --help         Show this help message
+
+Examples:
+  perdev-update                 # install or upgrade
+  perdev-update --reinstall     # wipe and reinstall
+  perdev-update --local-update  # bump all nix packages to latest
+  perdev-update --rollback      # undo the last switch
+  perdev-update --diff          # see what changed in the last switch
+  perdev-update --generations   # list all generations
+EOF
 }
 
-# Parse arguments
-UPGRADE=false
-for arg in "$@"; do
-  case "$arg" in
-    -u|--upgrade)
-      UPGRADE=true
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      # Ignore other unknown args
-      ;;
+# ── Argument parsing ──────────────────────────────────────────────────────────
+
+MODE="auto"       # auto | reinstall | local-update | rollback | diff | generations
+GEN_ARG=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --reinstall)      MODE="reinstall"; shift ;;
+    --local-update)   MODE="local-update"; shift ;;
+    --rollback)       MODE="rollback"; shift
+                      [[ $# -gt 0 && "$1" != --* ]] && { GEN_ARG="$1"; shift; } ;;
+    --diff)           MODE="diff"; shift
+                      [[ $# -gt 0 && "$1" != --* ]] && { GEN_ARG="$1"; shift; } ;;
+    --generations)    MODE="generations"; shift ;;
+    -h|--help)        usage; exit 0 ;;
+    *)                warn "Unknown option: $1 (ignored)"; shift ;;
   esac
 done
 
-# Detect OS
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  PROFILE="mac"
-else
-  PROFILE="ubuntu"
-fi
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+_is_installed() {
+  home-manager generations 2>/dev/null | grep -q .
+}
+
+_detect_profile() {
+  [[ "$(uname -s)" == "Darwin" ]] && echo "mac" || echo "ubuntu"
+}
+
+_profile_dir() {
+  local d="$HOME/.local/state/nix/profiles"
+  [[ -d "$d" ]] || d="/nix/var/nix/profiles/per-user/$USER"
+  echo "$d"
+}
+
+_switch() {
+  local profile; profile=$(_detect_profile)
+  if [[ "$profile" == "mac" ]]; then
+    if nix run "github:LnL7/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v; then
+      info "Configuration applied successfully."
+    else
+      warn "darwin-rebuild failed — falling back to home-manager..."
+      nix run nixpkgs#home-manager -- switch --flake ".#${profile}" --impure -v
+    fi
+  else
+    nix run nixpkgs#home-manager -- switch --flake ".#${profile}" --impure -v
+  fi
+}
+
+_clone_or_update_repo() {
+  local repo_dir="$1"
+  mkdir -p "$(dirname "$repo_dir")"
+  if [[ ! -d "$repo_dir" ]]; then
+    info "Cloning perdev repository to ${repo_dir}..."
+    git clone https://github.com/innobead/perdev.git "$repo_dir"
+  fi
+  if [[ ! -d "$repo_dir/.git" ]]; then
+    error "${repo_dir} is not a valid git repository. Remove it and re-run."
+    exit 1
+  fi
+  cd "$repo_dir"
+  info "Fetching latest changes..."
+  git fetch origin main
+  if ! git diff-index --quiet HEAD --; then
+    warn "Local changes detected — stashing..."
+    git stash
+  fi
+  git merge origin/main
+}
+
+# ── Mode dispatch ─────────────────────────────────────────────────────────────
 
 REPO_DIR="${HOME}/.local/share/perdev"
 
-# Ensure the parent directory exists
-mkdir -p "$(dirname "$REPO_DIR")"
+case "$MODE" in
 
-# Automate cloning if not already present
-if [[ ! -d "$REPO_DIR" ]]; then
-  info "Repository not found locally. Cloning to ${REPO_DIR}..."
-  if ! git clone https://github.com/innobead/perdev.git "$REPO_DIR"; then
-    error "Failed to clone repository. Please check your internet connection."
-    exit 1
-  fi
-fi
+  auto)
+    if _is_installed; then
+      info "Already installed — upgrading from remote..."
+      _clone_or_update_repo "$REPO_DIR"
+      _switch
+      info "Upgrade complete."
+    else
+      info "Not installed — running full setup..."
+      _clone_or_update_repo "$REPO_DIR"
+      bash "$REPO_DIR/setup.sh"
+    fi
+    ;;
 
-cd "$REPO_DIR"
+  reinstall)
+    info "Force reinstalling perdev..."
+    _clone_or_update_repo "$REPO_DIR"
+    if [[ -f "$REPO_DIR/uninstall.sh" ]]; then
+      bash "$REPO_DIR/uninstall.sh" --force
+    fi
+    bash "$REPO_DIR/setup.sh"
+    ;;
 
-# Verify directory is a git repository
-if [[ ! -d ".git" ]]; then
-  error "${REPO_DIR} is not a valid git repository. Please remove it and re-run."
-  exit 1
-fi
+  local-update)
+    info "Updating flake.lock and reapplying configuration locally..."
+    cd "$REPO_DIR"
+    nix flake update
+    _switch
+    info "Local update complete."
+    ;;
 
-info "Checking for remote configuration updates..."
-# Fetch the latest commits
-git fetch origin main
+  rollback)
+    if [[ -n "$GEN_ARG" ]]; then
+      info "Rolling back to generation ${GEN_ARG}..."
+      pdir=$(_profile_dir)
+      link="$pdir/home-manager-${GEN_ARG}-link"
+      if [[ ! -L "$link" ]]; then
+        error "Generation ${GEN_ARG} not found in ${pdir}"
+        exit 1
+      fi
+      "$link/activate"
+    else
+      info "Rolling back to previous generation..."
+      home-manager switch --rollback
+    fi
+    ;;
 
-# Check if there are local uncommitted changes
-if ! git diff-index --quiet HEAD --; then
-  warn "Local repository has uncommitted changes. Stashing changes..."
-  git stash
-fi
+  diff)
+    pdir=$(_profile_dir)
+    current_link="$pdir/home-manager"
+    if [[ -n "$GEN_ARG" ]]; then
+      target_link="$pdir/home-manager-${GEN_ARG}-link"
+    else
+      current_num=$(home-manager generations | head -1 | grep -o '[0-9]\+' | tail -1)
+      prev=$((current_num - 1))
+      if [[ "$prev" -lt 1 ]]; then
+        warn "No previous generation found."
+        exit 0
+      fi
+      target_link="$pdir/home-manager-${prev}-link"
+    fi
+    if [[ ! -L "$target_link" ]]; then
+      error "Generation link not found: ${target_link}"
+      exit 1
+    fi
+    nvd diff "$target_link" "$current_link"
+    ;;
 
-# Merge changes
-info "Pulling latest changes from main..."
-git merge origin/main
+  generations)
+    home-manager generations
+    ;;
 
-# Build configuration switch command
-CMD=(nix run nixpkgs#home-manager -- switch --flake ".#${PROFILE}" --impure -v)
+esac
 
-if [[ "$UPGRADE" == "true" ]]; then
-  info "Upgrading packages (recreating lock file)..."
-  CMD+=(--recreate-lock-file)
-fi
-
-info "Applying updated configuration via Home Manager..."
-if "${CMD[@]}"; then
-  info "Workstation environment update completed successfully!"
-else
-  error "Failed to apply configuration updates."
-  exit 1
-fi

@@ -17,7 +17,11 @@ $env.config.history.sync_on_enter = true
 # ── direnv hook ───────────────────────────────────────────────────────────────
 # direnv has no built-in nushell hook generator; this minimal hook fires on
 # every prompt render and loads env changes when .envrc is present.
+# Guard: initialize pre_prompt to empty list if it doesn't exist yet.
 if (which direnv | is-not-empty) {
+    if not ("pre_prompt" in $env.config.hooks) or ($env.config.hooks.pre_prompt | is-empty) {
+        $env.config.hooks.pre_prompt = []
+    }
     $env.config.hooks.pre_prompt = (
         $env.config.hooks.pre_prompt | append [{||
             if (".envrc" | path exists) or ("DIRENV_FILE" in $env) {

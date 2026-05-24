@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# install.sh — Bootstrap Ubuntu or macOS with Nix + Home Manager
+# install.sh — Minimal bootstrap: Nix + Home Manager only.
+#
+# Use setup.sh (repo root) for a full environment setup including Docker,
+# AI tools, and Ollama models. This script only handles steps 1-3 of setup.sh
+# and is kept for backwards compatibility / CI use cases.
 #
 # Usage:
 #   bash install.sh
@@ -53,16 +57,34 @@ else
 fi
 info "Nix: $(nix --version)"
 
-# ── Step 3: Apply Home Manager configuration ──────────────────────────────────
+# ── Step 3: Apply configuration ──────────────────────────────────────────────
 # --impure is required so builtins.getEnv "USER" / "HOME" resolve correctly.
-info "Applying Home Manager config for profile '${HM_PROFILE}' (user: $USER)..."
-nix run nixpkgs#home-manager -- switch \
-  --flake "${FLAKE_DIR}#${HM_PROFILE}" \
-  --impure \
-  -b bak \
-  -v
-
-info "Home Manager configuration applied."
+if [[ "$IS_MAC" == "true" ]]; then
+  # macOS: use nix-darwin for system-level config + Home Manager as a module.
+  # Falls back to home-manager only if darwin-rebuild is unavailable.
+  info "Applying nix-darwin config for macOS (user: $USER)..."
+  if nix run "github:LnL7/nix-darwin#darwin-rebuild" -- switch \
+       --flake "${FLAKE_DIR}#mac" \
+       --impure; then
+    info "nix-darwin configuration applied."
+  else
+    warn "darwin-rebuild unavailable — falling back to home-manager switch..."
+    nix run nixpkgs#home-manager -- switch \
+      --flake "${FLAKE_DIR}#mac" \
+      --impure \
+      -b bak \
+      -v
+    info "Home Manager configuration applied (nix-darwin fallback)."
+  fi
+else
+  info "Applying Home Manager config for profile '${HM_PROFILE}' (user: $USER)..."
+  nix run nixpkgs#home-manager -- switch \
+    --flake "${FLAKE_DIR}#${HM_PROFILE}" \
+    --impure \
+    -b bak \
+    -v
+  info "Home Manager configuration applied."
+fi
 
 # ── Step 4: Register nushell as a valid login shell ───────────────────────────
 NU_BIN="$(command -v nu 2>/dev/null || true)"
@@ -119,6 +141,9 @@ if [[ "$IS_MAC" == "true" ]]; then
   info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Antigravity CLI, Copilot"
   info "  3. ollama pull llama3.2                    — download a local LLM model"
   info "  4. Open Ghostty — it will launch nushell automatically"
+  info ""
+  info "  To apply macOS system defaults (Dock, Finder, Touch ID sudo, Homebrew):"
+  info "    darwin-rebuild switch --flake ${FLAKE_DIR}#mac --impure"
 else
   info "Ubuntu next steps (run in a new terminal):"
   info "  1. bash ${FLAKE_DIR}/scripts/docker-setup.sh      — install Docker CE"

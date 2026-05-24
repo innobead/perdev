@@ -1,128 +1,111 @@
-# Justfile — command runner for the provisioning workflow
-# Install just via Nix (included in home.nix packages), then run: just <recipe>
+# Justfile — perdev command runner
+# Requires: just (included in home.nix). Run: just <recipe>
 
-# Show available recipes
+# List available recipes
 default:
     @just --list
 
-# Full provisioning: all steps in one shot (idempotent — safe to re-run)
-setup:
-    bash setup.sh
+# ── Install / Update ──────────────────────────────────────────────────────────
 
-# Remove all components installed by setup.sh (prompts for confirmation)
+# Smart install: full install if not yet installed; upgrade if already installed.
+# Pass force=true to wipe and reinstall: just install force=true
+install force="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ "{{force}}" = "true" ]; then
+        echo "Force reinstall: removing existing installation..."
+        bash uninstall.sh --force
+        bash setup.sh
+    elif home-manager generations 2>/dev/null | grep -q .; then
+        echo "Already installed — upgrading..."
+        just update
+    else
+        bash setup.sh
+    fi
+
+# Pull latest perdev config from the remote repo and reapply
+update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    REPO_DIR="${HOME}/.local/share/perdev"
+    if [ ! -d "$REPO_DIR/.git" ]; then
+        echo "perdev repo not found at $REPO_DIR — run: just install"
+        exit 1
+    fi
+    cd "$REPO_DIR"
+    git fetch origin main
+    if ! git diff-index --quiet HEAD --; then
+        git stash
+    fi
+    git merge origin/main
+    if [ "$(uname -s)" = "Darwin" ]; then
+        nix run "github:LnL7/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
+          || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
+    else
+        nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
+    fi
+
+# Update flake.lock to latest package versions and reapply (local dev use)
+local-update:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    nix flake update
+    if [ "$(uname -s)" = "Darwin" ]; then
+        nix run "github:LnL7/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
+          || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
+    else
+        nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
+    fi
+
+# Remove all components installed by perdev (prompts for confirmation)
 uninstall:
     bash uninstall.sh
 
-# Bootstrap: install Nix and apply Home Manager (auto-detects Ubuntu vs macOS)
-install:
-    bash scripts/install.sh
+# ── Generations ───────────────────────────────────────────────────────────────
 
-# Install Docker CE via official apt repo — Ubuntu only
-docker:
-    bash scripts/docker-setup.sh
-
-# Start Colima + verify Apple Container — macOS only
-docker-mac:
-    bash scripts/docker-mac-setup.sh
-
-# Install AI tools (Claude Code, Gemini CLI, Antigravity CLI, Copilot, LLM plugins, RTK)
-ai:
-    bash scripts/ai-tools-setup.sh
-
-# Full setup: provision everything
-all: install
-    @echo ""
-    @if [ "$(uname -s)" = "Darwin" ]; then \
-        echo "Open a new shell, then run: just docker-mac && just ai"; \
-    else \
-        echo "Open a new shell, then run: just docker && just ai"; \
-    fi
-
-# Update flake inputs to latest versions
-update:
-    nix flake update
-
-# Update flake inputs AND apply the new Home Manager config in one step
-upgrade: update switch
-
-# Apply updated Home Manager configuration (auto-detects platform)
-switch:
-    @if [ "$(uname -s)" = "Darwin" ]; then \
-        nix run nixpkgs#home-manager -- switch --flake .#mac --impure -v; \
-    else \
-        nix run nixpkgs#home-manager -- switch --flake .#ubuntu --impure -v; \
-    fi
-
-# Roll back to the previous Home Manager generation
-rollback:
-    home-manager generations
-
-# Show package version changes between the last two Home Manager generations
-diff:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    current=$(home-manager generations | head -n 1 | cut -d' ' -f5)
-    prev=$((current - 1))
-    if [ "$prev" -lt 1 ]; then
-        echo "No previous generation found to diff against."
-        exit 0
-    fi
-    profile_dir="$HOME/.local/state/nix/profiles"
-    if [ ! -d "$profile_dir" ]; then
-        profile_dir="/nix/var/nix/profiles/per-user/$USER"
-    fi
-    nvd diff "$profile_dir/home-manager-$prev-link" "$profile_dir/home-manager"
-
-# List installed Home Manager generations
+# List all Home Manager generations
 generations:
     home-manager generations
 
-# Run provisioning verification inside an Ubuntu container
-test-ubuntu:
-    bash tests/test-ubuntu.sh
+# Roll back to generation N (default: previous generation)
+rollback gen="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [ -n "{{gen}}" ]; then
+        profile_dir="$HOME/.local/state/nix/profiles"
+        [ -d "$profile_dir" ] || profile_dir="/nix/var/nix/profiles/per-user/$USER"
+        home-manager generations | awk -v g="{{gen}}" '$0 ~ g {print $NF}' | head -1 | xargs -I{} {}/activate
+    else
+        home-manager switch --rollback
+    fi
 
-# Run test with a specific Ubuntu version (e.g. just test-ubuntu-version 22.04)
-test-ubuntu-version version:
-    UBUNTU_IMAGE="ubuntu:{{version}}" bash tests/test-ubuntu.sh
+# Show package version changes between generation N and current (default: previous)
+diff gen="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    profile_dir="$HOME/.local/state/nix/profiles"
+    [ -d "$profile_dir" ] || profile_dir="/nix/var/nix/profiles/per-user/$USER"
+    current_link="$profile_dir/home-manager"
+    if [ -n "{{gen}}" ]; then
+        target_link="$profile_dir/home-manager-{{gen}}-link"
+    else
+        current_num=$(home-manager generations | head -1 | awk '{print $NF}' | grep -o '[0-9]*' | tail -1)
+        prev=$((current_num - 1))
+        if [ "$prev" -lt 1 ]; then
+            echo "No previous generation found."
+            exit 0
+        fi
+        target_link="$profile_dir/home-manager-${prev}-link"
+    fi
+    nvd diff "$target_link" "$current_link"
 
-# Run provisioning verification directly on macOS (no container — macOS containers don't exist)
+# ── Tests (dev) ───────────────────────────────────────────────────────────────
+
+# Run provisioning verification on macOS (non-destructive)
 test-mac:
     bash tests/test-mac.sh
 
-# Pull recommended local LLM models via Ollama
-ollama-models:
-    ollama pull llama3.2
-    ollama pull deepseek-coder-v2
-
-# Check that key tools are working
-verify:
-    @echo "=== Shell ==="
-    @nu --version
-    @carapace --version
-    @echo "=== Dev tools ==="
-    @go version
-    @rustup show active-toolchain
-    @python3 --version
-    @bun --version
-    @echo "=== Containers / Kubernetes ==="
-    @kubectl version --client --short 2>/dev/null || kubectl version --client
-    @helm version --short
-    @kind version
-    @tilt version
-    @echo "=== Containers (platform-specific) ==="
-    @if [ "$(uname -s)" = "Darwin" ]; then \
-        colima status 2>/dev/null || echo "colima: not running (run: just docker-mac)"; \
-        docker --version 2>/dev/null || echo "docker: needs colima"; \
-        container --version 2>/dev/null || echo "container: not installed (Apple Silicon only)"; \
-    else \
-        podman --version; \
-        docker --version 2>/dev/null || echo "docker: not installed (run: just docker)"; \
-    fi
-    @echo "=== AI tools ==="
-    @llm --version
-    @ollama --version
-    @claude --version 2>/dev/null || echo "claude: not installed (run: just ai)"
-    @agy --version 2>/dev/null || echo "agy: not installed (run: just ai)"
-    @vhs --version
-    @echo "=== Done ==="
+# Run provisioning verification inside an Ubuntu Docker container
+test-ubuntu:
+    bash tests/test-ubuntu.sh
 
