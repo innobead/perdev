@@ -19,8 +19,8 @@
 
   outputs = { nixpkgs, home-manager, nix-darwin, ... }:
     let
-      linuxPkgs  = nixpkgs.legacyPackages."x86_64-linux";
-      darwinPkgs = nixpkgs.legacyPackages."aarch64-darwin";
+      linuxPkgs  = import nixpkgs { system = "x86_64-linux";  config.allowUnfree = true; };
+      darwinPkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
     in {
       # ── Ubuntu / Linux profile ─────────────────────────────────────────────
       # Run: home-manager switch --flake .#ubuntu --impure
@@ -43,6 +43,7 @@
           system = "aarch64-darwin";
           specialArgs = { isDarwin = true; nixgl = null; };
           modules = [
+            { nixpkgs.config.allowUnfree = true; }
             ./darwin.nix  # macOS system defaults, Homebrew, system PATH
             home-manager.darwinModules.home-manager
             {
