@@ -1,6 +1,6 @@
 # perdev
 
-Reproducible development workstation provisioning for **Ubuntu** and **macOS** (Apple Silicon), built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/LnL7/nix-darwin).
+Reproducible development workstation provisioning for **Linux** and **macOS**, built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/LnL7/nix-darwin).
 
 Declare tools once in `home.nix`, bootstrap any new machine with one command, and get an identical environment every time — pinned versions via `flake.lock`.
 

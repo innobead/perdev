@@ -200,9 +200,11 @@
         llm-gemini    = true;
         llm-ollama    = true;
       })
-      ollama  # local LLM server — pull models: ollama pull llama3.2
-      # claude-code  # uncomment once nixpkgs package name is verified
-      # gemini-cli   # uncomment once nixpkgs package name is verified
+      ollama       # local LLM server — pull models after first start: ollama pull llama3.2
+      rtk          # CLI output filter — reduces LLM token usage 60-90%
+      claude-code  # Anthropic agentic coding CLI
+      gemini-cli   # Google Gemini CLI
+      antigravity  # Google Antigravity CLI
 
       # ── Fonts ─────────────────────────────────────────────────────────
       nerd-fonts.jetbrains-mono

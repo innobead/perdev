@@ -11,11 +11,10 @@
 #
 # Steps:
 #   1. Nix          — Determinate Systems installer
-#   2. Home Manager — nix run nixpkgs#home-manager switch (all packages)
+#   2. Home Manager — nix run nixpkgs#home-manager switch (all packages + AI tools via Nix)
 #   3. Rust         — rustup toolchain install stable
 #   4. Docker       — Docker CE (Ubuntu) or Colima start (macOS)
-#   5. AI tools     — Claude Code, Gemini CLI, Antigravity CLI, gh Copilot, LLM plugins, RTK
-#   6. Ollama models — pull llama3.2 if ollama daemon is reachable
+#   5. AI tools     — verify Nix-managed tools, wire RTK hook, check gh copilot
 
 # Do NOT use set -e — steps are independent; failures are tracked manually.
 set -uo pipefail
@@ -201,107 +200,44 @@ fi
 
 # ══ Step 5: AI tools ══════════════════════════════════════════════════════════
 section "5/6  AI tools"
-# Ensure ~/.bun/bin is on PATH; fall back to nix shell if bun isn't ready yet.
-source_bun
-if ! command -v bun &>/dev/null; then
-  echo "bun not on PATH — bootstrapping via nix shell nixpkgs#bun..."
-  _bun_install_g() {
-    nix shell nixpkgs#bun --command bun install -g "$@"
-  }
-else
-  _bun_install_g() { bun install -g "$@"; }
-fi
+# claude-code, gemini-cli, antigravity, rtk, ollama, llm are all managed by Nix (home.nix).
+# This step wires up hooks that need a running environment.
 
 _ai_ok=true
 
-# Claude Code
-if command -v claude &>/dev/null; then
-  skip "Claude Code" "already installed"
-else
-  echo "Installing Claude Code..."
-  _bun_install_g @anthropic-ai/claude-code || { fail "Claude Code" "bun install failed"; _ai_ok=false; }
-  command -v claude &>/dev/null && pass "Claude Code"
-fi
+# Verify Nix-managed AI tools are on PATH
+for _tool in claude gemini agy rtk llm ollama; do
+  if command -v "$_tool" &>/dev/null; then
+    pass "$_tool" "installed via Nix"
+  else
+    warn "$_tool" "not found — open a new shell and re-run if this persists"
+  fi
+done
 
-# Gemini CLI
-if command -v gemini &>/dev/null; then
-  skip "Gemini CLI" "already installed"
-else
-  echo "Installing Gemini CLI..."
-  _bun_install_g @google/gemini-cli || { fail "Gemini CLI" "bun install failed"; _ai_ok=false; }
-  command -v gemini &>/dev/null && pass "Gemini CLI"
-fi
-
-# Antigravity CLI
-if command -v agy &>/dev/null; then
-  skip "Antigravity CLI" "already installed"
-else
-  echo "Installing Antigravity CLI..."
-  curl -fsSL https://antigravity.google/cli/install.sh | bash && pass "Antigravity CLI" || { fail "Antigravity CLI" "install failed"; _ai_ok=false; }
-fi
-
-# GitHub Copilot extension
+# GitHub Copilot — built-in to gh ≥2.x; extension install not needed
 if command -v gh &>/dev/null; then
-  if gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
-    skip "gh copilot" "already installed"
+  if gh copilot --version &>/dev/null; then
+    pass "gh copilot" "built-in to gh"
   elif gh auth status &>/dev/null; then
     echo "Installing GitHub Copilot extension..."
-    if gh extension install github/gh-copilot 2>/dev/null; then
+    if gh extension install github/gh-copilot 2>&1; then
       pass "gh copilot"
     else
-      fail "gh copilot" "gh extension install failed"
-      _ai_ok=false
+      warn "gh copilot" "extension install failed — run: gh auth login, then retry"
     fi
   else
     skip "gh copilot" "gh CLI not authenticated (run: gh auth login)"
   fi
 else
-  fail "gh copilot" "gh CLI not found"
-  _ai_ok=false
+  warn "gh copilot" "gh CLI not found"
 fi
 
-# LLM plugins
-# LLM plugins are managed by Nix (home.nix) via llm.withPlugins.
-if command -v llm &>/dev/null; then
-  pass "LLM plugins" "managed via Nix"
-else
-  fail "LLM plugins" "llm not found — Home Manager step may have failed"
-  _ai_ok=false
-fi
-
-# RTK (Rust Token Killer) — filters CLI output noise before it reaches the LLM
-if command -v rtk &>/dev/null; then
-  skip "RTK" "already installed"
-else
-  echo "Installing RTK..."
-  if $IS_MAC && command -v brew &>/dev/null; then
-    brew install rtk && pass "RTK" || { fail "RTK" "brew install failed"; _ai_ok=false; }
-  else
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh \
-      && pass "RTK" || { fail "RTK" "curl install failed"; _ai_ok=false; }
-  fi
-fi
+# Wire RTK → Claude Code hook (idempotent)
 if command -v rtk &>/dev/null; then
   rtk init -g 2>/dev/null || true
 fi
 
 $_ai_ok && pass "AI tools" "all components installed" || true
-
-# ══ Step 6: Ollama — pull starter model ══════════════════════════════════════
-section "6/6  Ollama starter model"
-if ! command -v ollama &>/dev/null; then
-  fail "Ollama" "ollama not found — Home Manager step may have failed"
-elif ollama list 2>/dev/null | grep -q "llama3.2"; then
-  skip "llama3.2" "already pulled"
-else
-  echo "Pulling llama3.2 (~2 GB)..."
-  if ollama pull llama3.2; then
-    pass "llama3.2"
-  else
-    fail "llama3.2" "pull failed — Ollama daemon may not be running yet"
-    echo "  Retry after a new shell: ollama pull llama3.2"
-  fi
-fi
 
 # ══ Summary ═══════════════════════════════════════════════════════════════════
 echo ""
@@ -327,4 +263,11 @@ else
   echo ""
   echo "Open a new shell (or run: source ~/.bashrc) to start using the environment."
   echo "Ghostty will open Nushell automatically."
+  echo ""
+  echo -e "${B}Next steps:${N}"
+  echo "  Pull a local LLM model (after opening a new shell, ollama daemon starts automatically):"
+  echo "    ollama pull llama3.2        # ~2 GB, fast general model"
+  echo "    ollama pull deepseek-r1     # ~4 GB, great for coding"
+  echo "  Authenticate GitHub CLI (needed for gh copilot, PR workflows):"
+  echo "    gh auth login"
 fi
