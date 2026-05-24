@@ -14,6 +14,10 @@
   system.stateVersion = 6;
   system.primaryUser  = builtins.getEnv "USER";
 
+  # Determinate Nix manages the Nix daemon — disable nix-darwin's conflicting
+  # Nix management so darwin-rebuild switch succeeds.
+  nix.enable = false;
+
   # ── Homebrew — all macOS packages ─────────────────────────────────────────
   # setup.sh installs Homebrew if not present. Packages are never removed by
   # uninstall.sh — manage them manually if you want to uninstall.
