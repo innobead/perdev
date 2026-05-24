@@ -3,7 +3,7 @@
 #
 # Installed by Home Manager to ~/.local/bin/perdev-update.
 # Also usable as a one-line bootstrap:
-#   curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/scripts/perdev-update.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh | bash
 #
 # Behaviour when run with no flags:
 #   - If Home Manager is not yet active: runs a full install (setup.sh)
@@ -79,7 +79,7 @@ _profile_dir() {
 _switch() {
   local profile; profile=$(_detect_profile)
   if [[ "$profile" == "mac" ]]; then
-    if nix run "github:LnL7/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v; then
+    if nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v; then
       info "Configuration applied successfully."
     else
       warn "darwin-rebuild failed — falling back to home-manager..."

@@ -102,16 +102,36 @@ else
   fi
 fi
 
+# ══ Step 1b: Homebrew (macOS only) ═══════════════════════════════════════════
+if $IS_MAC; then
+  section "1b/6  Homebrew"
+  if command -v brew &>/dev/null; then
+    skip "Homebrew" "already installed — $(brew --version | head -1)"
+  else
+    echo "Installing Homebrew..."
+    if /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"; then
+      # Add brew to PATH for the current session (Apple Silicon path)
+      eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || true
+      pass "Homebrew" "$(brew --version | head -1)"
+    else
+      fail "Homebrew" "installation failed — cannot continue on macOS"
+      exit 1
+    fi
+  fi
+  # Ensure brew is on PATH for subsequent steps
+  eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || true
+fi
+
 # ══ Step 2: nix-darwin (macOS) or Home Manager (Linux) ═══════════════════════
 if $IS_MAC; then
   section "2/6  nix-darwin + Home Manager — darwin-rebuild"
-  echo "Profile: mac  (darwin.nix + home.nix — system defaults, Homebrew, all packages)"
+  echo "Profile: mac  (darwin.nix manages Homebrew packages; home.nix manages shell configs)"
   if nix run nix-darwin#darwin-rebuild -- switch \
        --flake "${REPO_DIR}#mac" \
        --impure \
        -v 2>/dev/null || \
      nix --extra-experimental-features "nix-command flakes" \
-       run "github:LnL7/nix-darwin#darwin-rebuild" -- switch \
+       run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
        --flake "${REPO_DIR}#mac" \
        --impure 2>/dev/null; then
     source_hm
@@ -200,22 +220,31 @@ fi
 
 # ══ Step 5: AI tools ══════════════════════════════════════════════════════════
 section "5/6  AI tools"
-# claude-code, gemini-cli, antigravity, rtk, ollama, llm are all managed by Nix (home.nix).
-# This step wires up hooks that need a running environment.
+# On macOS: all AI tools (claude-code, gemini-cli, copilot-cli, antigravity,
+#           rtk, ollama, llm) are brew-managed via darwin.nix.
+# On Linux: all AI tools managed by Nix (home.nix).
+# This step verifies availability and wires up hooks that need a running environment.
 
 _ai_ok=true
 
-# Verify Nix-managed AI tools are on PATH
+# Verify AI tools are on PATH
 for _tool in claude gemini agy rtk llm ollama; do
   if command -v "$_tool" &>/dev/null; then
-    pass "$_tool" "installed via Nix"
+    pass "$_tool" "$(if $IS_MAC; then echo 'installed via Homebrew'; else echo 'installed via Nix'; fi)"
   else
     warn "$_tool" "not found — open a new shell and re-run if this persists"
   fi
 done
 
-# GitHub Copilot — built-in to gh ≥2.x; extension install not needed
-if command -v gh &>/dev/null; then
+# GitHub Copilot CLI
+if $IS_MAC; then
+  # copilot-cli cask provides the standalone binary
+  if command -v copilot &>/dev/null || command -v gh-copilot &>/dev/null; then
+    pass "copilot-cli" "installed via Homebrew cask"
+  else
+    warn "copilot-cli" "not found — run: brew install --cask copilot-cli"
+  fi
+elif command -v gh &>/dev/null; then
   if gh copilot --version &>/dev/null; then
     pass "gh copilot" "built-in to gh"
   elif gh auth status &>/dev/null; then

@@ -51,11 +51,14 @@ done
 echo -e "${R}${B}perdev uninstall — $(uname -s)${N}"
 echo ""
 echo "This will remove:"
-echo "  • AI tools: Claude Code, Gemini CLI, Antigravity CLI, gh Copilot, LLM plugins, RTK"
+echo "  • AI tools: Claude Code, Gemini CLI, Copilot CLI, LLM plugins, RTK"
 echo "  • Rust stable toolchain (rustup)"
 $IS_MAC && echo "  • Colima VM and its data" || echo "  • Docker CE packages"
 echo "  • Home Manager activation (symlinks and generated configs)"
 echo "  • Nix (/nix store — all Nix-managed packages)"
+echo ""
+echo "NOT removed (manage manually if desired):"
+$IS_MAC && echo "  • Homebrew and all brew-installed packages (darwin.nix formulae/casks)"
 echo ""
 
 if ! $FORCE; then
@@ -73,45 +76,46 @@ section "1/5  AI tools"
 if command -v rtk &>/dev/null; then
   echo "Removing RTK Claude Code hook..."
   rtk deinit -g 2>/dev/null || {
-    # rtk deinit may not exist — scrub the hook entry from Claude settings manually
     _rtk_settings="${HOME}/.claude/settings.json"
     if [[ -f "$_rtk_settings" ]] && grep -q "rtk" "$_rtk_settings" 2>/dev/null; then
       echo "  (rtk deinit unavailable — please remove RTK hook from $_rtk_settings manually)"
     fi
   }
-  if $IS_MAC && command -v brew &>/dev/null && brew list rtk &>/dev/null 2>&1; then
-    brew uninstall rtk && pass "RTK" || fail "RTK" "brew uninstall failed"
-  else
+  # RTK is brew-managed on macOS; on Linux remove the binary directly
+  if ! $IS_MAC; then
     rm -f "${HOME}/.local/bin/rtk" && pass "RTK" || skip "RTK" "binary not found at ~/.local/bin/rtk"
+  else
+    skip "RTK" "brew-managed on macOS — run: brew uninstall rtk"
   fi
 else
   skip "RTK" "not installed"
 fi
 
-# bun-based tools
-export PATH="${HOME}/.bun/bin:${PATH:-}"
-for _pkg in "@anthropic-ai/claude-code" "@google/gemini-cli"; do
-  if command -v bun &>/dev/null; then
-    bun remove -g "$_pkg" 2>/dev/null \
-      && pass "bun: $_pkg" \
-      || skip "bun: $_pkg" "not installed"
-  else
-    skip "bun: $_pkg" "bun not found — uninstall manually: bun remove -g $_pkg"
-  fi
-done
+# claude-code, gemini-cli — brew cask/formula on macOS; nix on Linux
+if $IS_MAC; then
+  skip "claude-code" "brew-managed on macOS — run: brew uninstall --cask claude-code"
+  skip "gemini-cli"  "brew-managed on macOS — run: brew uninstall gemini-cli"
+else
+  # On Linux these are nix packages; home-manager switch --impure removes them.
+  # No manual removal needed here.
+  skip "claude-code" "nix-managed on Linux — removed with Home Manager"
+  skip "gemini-cli"  "nix-managed on Linux — removed with Home Manager"
+fi
 
-# Antigravity CLI
-if command -v agy &>/dev/null; then
+# Antigravity CLI — brew-managed on macOS; skip
+if ! $IS_MAC && command -v agy &>/dev/null; then
   echo "Removing Antigravity CLI..."
   rm -f "${HOME}/.local/bin/agy" 2>/dev/null || true
   rm -rf "${HOME}/.gemini/antigravity-cli" 2>/dev/null || true
   pass "Antigravity CLI" "removed"
 else
-  skip "Antigravity CLI" "not installed"
+  skip "Antigravity CLI" "$(if $IS_MAC; then echo 'brew-managed on macOS — skipped'; else echo 'not installed'; fi)"
 fi
 
-# GitHub Copilot extension
-if command -v gh &>/dev/null && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
+# GitHub Copilot — copilot-cli cask on macOS; gh extension on Linux
+if $IS_MAC; then
+  skip "copilot-cli" "brew-managed on macOS — run: brew uninstall --cask copilot-cli"
+elif command -v gh &>/dev/null && gh extension list 2>/dev/null | grep -q "github/gh-copilot"; then
   gh extension remove github/gh-copilot 2>/dev/null \
     && pass "gh copilot" || fail "gh copilot" "remove failed"
 else

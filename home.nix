@@ -155,7 +155,7 @@
     enable = true;
     config = {
       Label            = "com.local.ollama";
-      ProgramArguments = [ "${pkgs.ollama}/bin/ollama" "serve" ];
+      ProgramArguments = [ "/opt/homebrew/bin/ollama" "serve" ];
       RunAtLoad        = true;
       KeepAlive        = true;
       EnvironmentVariables = { OLLAMA_HOST = "127.0.0.1:11434"; };
@@ -166,35 +166,39 @@
 
 
   # ── Packages ──────────────────────────────────────────────────────────────
+  # On macOS all tools are installed by Homebrew (darwin.nix). Nix only
+  # installs packages on Linux here, plus the Apple Container CLI (not in brew).
   home.packages = with pkgs;
-    [
-      # ── CLI utilities (both platforms) ────────────────────────────────
+    # Linux — managed by Nix; on macOS Homebrew installs these instead
+    lib.optionals (!isDarwin) [
+      # ── CLI utilities ─────────────────────────────────────────────
       ripgrep fd fzf bat eza delta jq yq-go
       just age sops mkcert
       httpie curlie grpcurl
       htop dust procs
       vhs ffmpeg ttyd nvd
 
-      # ── Go ────────────────────────────────────────────────────────────
+      # ── Go ────────────────────────────────────────────────────────
       go gopls golangci-lint delve
 
       # ── Rust (rustup only — do NOT add pkgs.cargo or pkgs.rustc alongside)
       rustup
 
-      # ── Python ────────────────────────────────────────────────────────
+      # ── Python ────────────────────────────────────────────────────
       python3 uv
 
-      # ── JavaScript runtime ────────────────────────────────────────────
+      # ── JavaScript runtime ────────────────────────────────────────
       bun
 
-      # ── Container / OCI: shared tools (both platforms) ────────────────
+      # ── Container / OCI: shared tools ────────────────────────────
       dive crane cosign lazydocker
+      lima colima docker-client docker-buildx docker-compose
 
-      # ── Kubernetes (both platforms) ───────────────────────────────────
+      # ── Kubernetes ────────────────────────────────────────────────
       kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal flux
       tilt  # fast iterative Kubernetes dev loop (Tiltfile hot-reload)
 
-      # ── AI tools (both platforms) ─────────────────────────────────────
+      # ── AI tools ─────────────────────────────────────────────────
       (llm.withPlugins {
         llm-anthropic = true;
         llm-gemini    = true;
@@ -206,7 +210,7 @@
       gemini-cli   # Google Gemini CLI
       antigravity  # Google Antigravity CLI
 
-      # ── Fonts ─────────────────────────────────────────────────────────
+      # ── Fonts ─────────────────────────────────────────────────────
       nerd-fonts.jetbrains-mono
     ]
 
@@ -217,18 +221,9 @@
       skopeo   # OCI image inspect / copy / sign
     ]
 
-    # ── Cross-platform container / VM tools ───────────────────────────────
-    ++ [
-      lima            # Linux/Mac VMs via QEMU
-      colima          # Docker-compatible runtime via VMs (Apple VZ on macOS, QEMU on Linux)
-      docker-client   # Docker CLI — connects to Colima or Docker CE socket
-      docker-buildx   # Multi-platform image builds
-      docker-compose  # Compose CLI v2
-    ]
-
     # ── macOS-only container tools ────────────────────────────────────────
     ++ lib.optionals isDarwin [
-      container       # Apple Container CLI (native Apple VF, aarch64-darwin only)
+      container       # Apple Container CLI (native Apple VF, aarch64-darwin only — not in brew)
     ];
 
   # ── Session variables ─────────────────────────────────────────────────────
@@ -254,7 +249,7 @@
   ];
 
   home.file.".local/bin/perdev-update" = {
-    source = ./scripts/perdev-update.sh;
+    source = ./perdev-update.sh;
     executable = true;
   };
 

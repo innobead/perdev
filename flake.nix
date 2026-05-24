@@ -10,9 +10,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # nix-darwin: macOS system-level configuration (system defaults, Homebrew, launchd)
+    # nix-darwin: macOS system-level configuration (Homebrew, launchd)
     nix-darwin = {
-      url = "github:LnL7/nix-darwin/master";
+      url = "github:nix-darwin/nix-darwin/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

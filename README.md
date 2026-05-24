@@ -1,6 +1,10 @@
 # perdev
 
-Reproducible development workstation provisioning for **Linux** and **macOS**, built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/LnL7/nix-darwin).
+Reproducible development workstation provisioning for **Linux** and **macOS**, built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/nix-darwin/nix-darwin).
+
+**Package management by platform:**
+- **macOS** — packages installed via [Homebrew](https://brew.sh/) (managed declaratively in `darwin.nix`); Home Manager handles shell/program configuration only.
+- **Linux** — packages installed via Nix (Home Manager `home.packages`).
 
 Declare tools once in `home.nix`, bootstrap any new machine with one command, and get an identical environment every time — pinned versions via `flake.lock`.
 
@@ -11,7 +15,7 @@ Declare tools once in `home.nix`, bootstrap any new machine with one command, an
 ### One-line install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/scripts/perdev-update.sh | bash
+curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh | bash
 ```
 
 > **Requires:** `git` and `curl` pre-installed. On macOS run `xcode-select --install` if git is missing.
@@ -65,15 +69,15 @@ bash setup.sh
 `kubectl` · `helm` · `kind` · `k9s` · `kubectx`/`kubens` · `kustomize` · `stern` · `kubeseal` · `flux` · `tilt`
 
 ### AI development tools
-| Tool | Source | Purpose |
-|---|---|---|
-| [Claude Code](https://claude.ai/code) | npm | Anthropic's agentic coding CLI |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | npm | Google Gemini CLI |
-| [Antigravity CLI](https://antigravity.google) | `curl` | Official Google Antigravity CLI |
-| [GitHub Copilot](https://github.com/github/gh-copilot) | `gh` extension | Copilot in terminal |
-| [Ollama](https://ollama.com/) | Nix | Local LLM server (Llama, Mistral, Gemma, …) |
-| [LLM](https://llm.datasette.io/) | Nix | Universal LLM CLI with plugin support |
-| [RTK](https://github.com/rtk-ai/rtk) | `curl` / `brew` | CLI output filter — strips noise before it hits the LLM (60–90% savings) |
+| Tool | macOS source | Linux source | Purpose |
+|---|---|---|---|
+| [Claude Code](https://claude.ai/code) | `brew` cask | Nix | Anthropic's agentic coding CLI |
+| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `brew` | Nix | Google Gemini CLI |
+| [Antigravity CLI](https://antigravity.google) | `brew` (mac-only) | — | Official Google Antigravity CLI |
+| [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli) | `brew` cask | `gh` extension | Copilot in terminal |
+| [Ollama](https://ollama.com/) | `brew` | Nix | Local LLM server (Llama, Mistral, Gemma, …) |
+| [LLM](https://llm.datasette.io/) | `brew` | Nix | Universal LLM CLI with plugin support |
+| [RTK](https://github.com/rtk-ai/rtk) | `brew` | Nix | CLI output filter — strips noise before it hits the LLM (60–90% savings) |
 
 ### CLI utilities
 `vhs` · `ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
@@ -99,10 +103,11 @@ RTK is wired up automatically via a Claude Code hook (`rtk init -g`, run by `scr
 perdev/
 ├── flake.nix              # Nix flake — defines ubuntu and mac profiles
 ├── flake.lock             # Pinned package versions
-├── home.nix               # Home Manager config — all packages and programs
-├── darwin.nix             # nix-darwin config — macOS system defaults, Homebrew
+├── home.nix               # Home Manager config — shell/program configs (packages on Linux only)
+├── darwin.nix             # nix-darwin config — Homebrew package list for macOS
 ├── setup.sh               # Full setup entrypoint (all steps)
 ├── uninstall.sh           # Remove everything installed by perdev
+├── perdev-update.sh       # Installed to ~/.local/bin/perdev-update; bootstrap entry point
 ├── justfile               # Developer command aliases (just <recipe>)
 ├── configs/
 │   ├── nushell/
@@ -111,11 +116,10 @@ perdev/
 │   └── ghostty/
 │       └── config         # Reference config docs
 ├── scripts/
-│   ├── perdev-update.sh   # Installed to ~/.local/bin/perdev-update
 │   ├── install.sh         # Minimal Nix + HM bootstrap (used by setup.sh)
 │   ├── docker-setup.sh    # Ubuntu: Docker CE via apt
 │   ├── docker-mac-setup.sh# macOS: start Colima, verify Apple Container
-│   └── ai-tools-setup.sh  # npm + gh extension AI tools
+│   └── ai-tools-setup.sh  # Verify AI tools on PATH and wire RTK hook
 └── tests/
     ├── test-ubuntu.sh     # Ubuntu container validation
     └── test-mac.sh        # macOS direct validation
@@ -160,7 +164,15 @@ just test-ubuntu      # run Ubuntu provisioning tests (Docker required)
 
 ### Adding or removing a package
 
-Edit `home.packages` in `home.nix`, then run:
+**macOS** — edit `homebrew.brews` or `homebrew.casks` in `darwin.nix`, then run:
+
+```bash
+darwin-rebuild switch --flake .#mac --impure
+# or
+just install
+```
+
+**Linux** — edit `home.packages` in `home.nix`, then run:
 
 ```bash
 perdev-update --local-update   # apply immediately from local repo
@@ -197,10 +209,11 @@ nix-collect-garbage -d
 
 ### macOS (Apple Silicon)
 
-- **nix-darwin** manages system-level settings (Dock, Finder, keyboard, Homebrew) declaratively via `darwin.nix`. The flake exposes `darwinConfigurations.mac`.
-- **Ghostty** uses `pkgs.ghostty-bin` (pre-built) — the source build is broken on Darwin.
+- **nix-darwin** manages Homebrew declaratively via `darwin.nix`. All CLI tools, dev toolchains, and GUI apps are installed through Homebrew — **not** via Nix packages. Home Manager only generates shell/program config files.
+- **Homebrew packages are NOT removed by `uninstall.sh`** — manage them manually (`brew uninstall <pkg>`) if needed.
+- **Ghostty** is installed as a Homebrew cask (`ghostty`).
 - **Docker** runs inside a [Colima](https://github.com/abiosoft/colima) VM (Apple VZ backend). `docker` CLI commands work normally against Colima's socket.
-- **Apple Container** (`container` CLI) is Apple's native OCI tool — separate from Docker, requires Apple Silicon.
+- **Apple Container** (`container` CLI) is Apple's native OCI tool — installed via Nix (not available in Homebrew), requires Apple Silicon.
 - **Ollama** runs as a `launchd` user agent and starts automatically on login.
 
 ---

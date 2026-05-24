@@ -1,118 +1,86 @@
-{ pkgs, lib, config, ... }:
+{ lib, ... }:
 
-# darwin.nix — macOS system-level configuration via nix-darwin.
+# darwin.nix — macOS package management via nix-darwin + Homebrew.
 #
-# Manages system defaults, Homebrew packages, and launchd services that
-# need system-scope access (beyond what Home Manager can do as a user).
+# All CLI tools, dev toolchains, and GUI apps are installed declaratively
+# through Homebrew here. Home Manager (home.nix) handles only shell/program
+# configuration (configs, integrations) — it does NOT install packages on macOS.
 #
 # Apply with: darwin-rebuild switch --flake .#mac --impure
-# Or via: bash setup.sh (handles darwin-rebuild automatically on macOS)
+# Or via: bash setup.sh
 
 {
-  # ── Nix configuration ─────────────────────────────────────────────────────
-  nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
-    # Allow unfree packages (ghostty-bin, etc.)
-    warn-dirty = false;
-  };
-
-  # Required by nix-darwin — must match the actual macOS version
+  # ── Required nix-darwin fields ────────────────────────────────────────────
   system.stateVersion = 6;
+  system.primaryUser  = builtins.getEnv "USER";
 
-  # Primary user for user-scoped system options (Homebrew, etc.).
-  # Set via --impure so builtins.getEnv "USER" resolves at switch time.
-  system.primaryUser = builtins.getEnv "USER";
-
-  # ── System PATH ────────────────────────────────────────────────────────────
-  # Ensures /run/current-system/sw/bin is on PATH for all users/processes
-  # (including those launched by launchd, like Ghostty).
-  environment.systemPackages = [];
-
-  # ── macOS System Defaults ─────────────────────────────────────────────────
-  system.defaults = {
-    # Dock
-    dock = {
-      autohide               = true;
-      autohide-delay         = 0.0;
-      autohide-time-modifier = 0.2;
-      show-recents           = false;
-      tilesize               = 48;
-      minimize-to-application = true;
-    };
-
-    # Finder
-    finder = {
-      AppleShowAllFiles         = true;
-      AppleShowAllExtensions    = true;
-      ShowPathbar               = true;
-      ShowStatusBar             = true;
-      FXPreferredViewStyle      = "Nlsv";  # list view
-      _FXShowPosixPathInTitle   = true;
-      FXDefaultSearchScope      = "SCcf";  # search current folder
-      FXEnableExtensionChangeWarning = false;
-    };
-
-    # Keyboard / trackpad
-    NSGlobalDomain = {
-      AppleKeyboardUIMode            = 3;    # full keyboard access
-      ApplePressAndHoldEnabled       = false; # key repeat over press-and-hold
-      InitialKeyRepeat               = 15;
-      KeyRepeat                      = 2;
-      NSAutomaticCapitalizationEnabled      = false;
-      NSAutomaticDashSubstitutionEnabled    = false;
-      NSAutomaticPeriodSubstitutionEnabled  = false;
-      NSAutomaticQuoteSubstitutionEnabled   = false;
-      NSAutomaticSpellingCorrectionEnabled  = false;
-      NSNavPanelExpandedStateForSaveMode    = true;
-      PMPrintingExpandedStateForPrint       = true;
-    };
-
-    # Screenshots
-    screencapture.location = "~/Desktop";
-    screensaver.askForPasswordDelay = 10;
-
-    # Login window
-    loginwindow.GuestEnabled = false;
-
-    # Activity Monitor — show all processes
-    ActivityMonitor.ShowCategory = 100;
-  };
-
-  # ── Homebrew (declarative via nix-darwin) ─────────────────────────────────
-  # Manages casks and Mac App Store apps that have no Nix equivalent.
-  # Requires Homebrew to be installed: /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  # ── Homebrew — all macOS packages ─────────────────────────────────────────
+  # setup.sh installs Homebrew if not present. Packages are never removed by
+  # uninstall.sh — manage them manually if you want to uninstall.
   homebrew = {
     enable = true;
     onActivation = {
-      autoUpdate  = false;  # don't auto-update on every switch
-      cleanup     = "zap";  # remove unlisted formulae/casks
+      autoUpdate  = false;
+      cleanup     = "zap";   # removes unlisted formulae/casks on darwin-rebuild
       upgrade     = false;
     };
 
-    # Formulae managed by Nix; only add here what's unavailable in nixpkgs
-    brews = [];
+    brews = [
+      # ── CLI utilities ────────────────────────────────────────────────
+      "ripgrep" "fd" "fzf" "bat" "eza" "git-delta"
+      "jq" "yq" "just" "age" "sops" "mkcert"
+      "httpie" "curlie" "grpcurl"
+      "htop" "dust" "procs"
+      "vhs" "ffmpeg" "ttyd"
 
-    casks = [
-      "1password"         # password manager
-      "raycast"           # launcher / productivity
-      "arc"               # browser
-      "slack"             # messaging
-      "zoom"              # video conferencing
-      "obs"               # screen recording / streaming
+      # ── Go ────────────────────────────────────────────────────────────
+      "go" "gopls" "golangci-lint" "delve"
+
+      # ── Rust ─────────────────────────────────────────────────────────
+      "rustup"
+
+      # ── Python ───────────────────────────────────────────────────────
+      "python3" "uv"
+
+      # ── JavaScript ───────────────────────────────────────────────────
+      "bun"
+
+      # ── Container / OCI ──────────────────────────────────────────────
+      "dive" "crane" "cosign" "lazydocker"
+      "lima" "colima"
+      "docker" "docker-buildx" "docker-compose"
+
+      # ── Kubernetes ───────────────────────────────────────────────────
+      "kubectl" "helm" "kind" "k9s" "kubectx" "kustomize"
+      "stern" "kubeseal"
+      "fluxcd/tap/flux"
+      "tilt-dev/tap/tilt"
+
+      # ── Shell / terminal ─────────────────────────────────────────────
+      "nushell" "starship" "carapace" "zoxide" "atuin"
+      "direnv" "tmux" "neovim" "lazygit" "gh"
+
+      # ── AI tools ─────────────────────────────────────────────────────
+      "ollama" "llm" "rtk"
+      "antigravity"   # mac-only — not available in nixpkgs
+      "gemini-cli"
     ];
 
-    # Mac App Store apps (requires `mas` — installed by nix-darwin when masApps non-empty)
+    casks = [
+      "ghostty"           # terminal emulator (pre-built binary)
+      "claude-code"       # Anthropic agentic coding CLI
+      "copilot-cli"       # GitHub Copilot CLI
+      "font-jetbrains-mono-nerd-font"
+
+      # ── GUI apps ─────────────────────────────────────────────────────
+      "1password"
+      "raycast"
+      "arc"
+      "slack"
+      "zoom"
+      "obs"
+    ];
+
     masApps = {};
   };
-
-  # ── Security / Privacy ────────────────────────────────────────────────────
-  security.pam.services.sudo_local.touchIdAuth = true;  # Touch ID for sudo
-
-  # ── Shell environment (system-wide) ───────────────────────────────────────
-  # These paths are prepended system-wide so GUI apps (Ghostty, etc.) find
-  # Nix-managed binaries even without sourcing bash profile.
-  environment.profiles = [
-    "/nix/var/nix/profiles/default"
-    "\${HOME}/.nix-profile"
-  ];
 }
