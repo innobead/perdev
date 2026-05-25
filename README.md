@@ -136,6 +136,7 @@ After install, `perdev-update` is on your PATH. It manages the full lifecycle:
 ```bash
 perdev-update                 # upgrade: pull latest config + reapply
 perdev-update --reinstall     # wipe and reinstall from scratch
+perdev-update --self-update   # replace this script with the latest from GitHub
 perdev-update --local-update  # bump all Nix packages to latest versions
 perdev-update --rollback      # roll back to the previous generation
 perdev-update --rollback 42   # roll back to a specific generation number
@@ -151,6 +152,7 @@ If you have the repository cloned locally, `just` provides shortcuts:
 ```bash
 just install          # smart install/upgrade (or: just install force=true to reinstall)
 just update           # pull latest config from git + reapply
+just apply            # apply local changes without git pull or flake update (macOS: sudo darwin-rebuild)
 just local-update     # nix flake update + reapply (bumps package pins)
 just uninstall        # remove everything
 just rollback         # roll back to previous generation
@@ -167,9 +169,7 @@ just test-ubuntu      # run Ubuntu provisioning tests (Docker required)
 **macOS** — edit `homebrew.brews` or `homebrew.casks` in `darwin.nix`, then run:
 
 ```bash
-darwin-rebuild switch --flake .#mac --impure
-# or
-just install
+just apply   # sudo darwin-rebuild switch --flake .#mac --impure
 ```
 
 **Linux** — edit `home.packages` in `home.nix`, then run:
@@ -209,8 +209,10 @@ nix-collect-garbage -d
 
 ### macOS (Apple Silicon)
 
-- **nix-darwin** manages Homebrew declaratively via `darwin.nix`. All CLI tools, dev toolchains, and GUI apps are installed through Homebrew — **not** via Nix packages. Home Manager only generates shell/program config files.
-- **Homebrew packages are NOT removed by `uninstall.sh`** — manage them manually (`brew uninstall <pkg>`) if needed.
+- **nix-darwin** manages Homebrew declaratively via `darwin.nix` and runs Home Manager as a sub-activation via `darwin-rebuild switch` (requires `sudo`).
+- **Package split**: CLI tools and GUI apps are installed via Homebrew. Shell-integration tools (`nushell`, `starship`, `carapace`, `zoxide`, `atuin`) are Nix-managed via `programs.*` in `home.nix` — they must be Nix packages because Home Manager uses them at build time to generate nushell init scripts.
+- **Homebrew cleanup** is set to `none` — `darwin-rebuild` only ensures listed packages are installed, never removes packages you've installed yourself.
+- **Nushell config**: on macOS, nushell reads from `~/Library/Application Support/nushell/`. Home Manager generates configs to `~/.config/nushell/`. A `home.activation` step automatically symlinks the macOS path to the HM-managed location.
 - **Ghostty** is installed as a Homebrew cask (`ghostty`).
 - **Docker** runs inside a [Colima](https://github.com/abiosoft/colima) VM (Apple VZ backend). `docker` CLI commands work normally against Colima's socket.
 - **Apple Container** (`container` CLI) is Apple's native OCI tool — installed via Nix (not available in Homebrew), requires Apple Silicon.
