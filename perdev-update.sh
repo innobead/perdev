@@ -110,7 +110,7 @@ _clone_or_update_repo() {
     warn "Local changes detected — stashing..."
     git stash
   fi
-  git merge origin/main
+  git reset --hard origin/main
 }
 
 # ── Mode dispatch ─────────────────────────────────────────────────────────────
