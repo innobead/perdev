@@ -17,6 +17,7 @@ let priority_paths = [
     ($env.HOME | path join ".cargo" "bin")
     ($env.HOME | path join ".local" "bin")
     ($env.HOME | path join ".bun" "bin")
+    ($env.HOME | path join "go" "bin")
 ]
 $env.PATH = (
     $env.PATH | split row (char esep)

@@ -75,10 +75,6 @@ source_hm() {
   export PATH="${HOME}/.nix-profile/bin:${HOME}/.local/bin:${PATH:-}"
 }
 
-source_bun() {
-  export PATH="${HOME}/.bun/bin:${PATH:-}"
-}
-
 # ─────────────────────────────────────────────────────────────────────────────
 echo -e "${B}perdev setup — $(uname -s) / ${HM_PROFILE}${N}"
 echo "Repo: $REPO_DIR"

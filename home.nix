@@ -263,6 +263,7 @@
     "${config.home.homeDirectory}/.cargo/bin"
     "${config.home.homeDirectory}/.local/bin"
     "${config.home.homeDirectory}/.bun/bin"
+    "${config.home.homeDirectory}/go/bin"
   ];
 
   home.file.".local/bin/perdev-update" = {

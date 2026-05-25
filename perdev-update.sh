@@ -23,23 +23,23 @@ Usage: perdev-update [OPTIONS]
 Manage your perdev workstation environment.
 
 Options:
-  (no flags)         Install if not installed; upgrade (pull + switch) if installed
-  --reinstall        Uninstall then reinstall from scratch
-  --self-update      Replace this script with the latest version from GitHub
-  --local-update     Update flake.lock to latest packages and reapply (no git pull)
-  --rollback [N]     Roll back to generation N (default: previous generation)
-  --diff [N]         Show package changes vs generation N (default: previous)
-  --generations      List all Home Manager generations
-  -h, --help         Show this help message
+    (no flags)         Install if not installed; upgrade (pull + switch) if installed
+    --reinstall        Uninstall then reinstall from scratch
+    --self-update      Replace this script with the latest version from GitHub
+    --local-update     Update flake.lock to latest packages and reapply (no git pull)
+    --rollback [N]     Roll back to generation N (default: previous generation)
+    --diff [N]         Show package changes vs generation N (default: previous)
+    --generations      List all Home Manager generations
+    -h, --help         Show this help message
 
 Examples:
-  perdev-update                 # install or upgrade
-  perdev-update --reinstall     # wipe and reinstall
-  perdev-update --self-update   # update this script to the latest version
-  perdev-update --local-update  # bump all nix packages to latest
-  perdev-update --rollback      # undo the last switch
-  perdev-update --diff          # see what changed in the last switch
-  perdev-update --generations   # list all generations
+    perdev-update                 # install or upgrade
+    perdev-update --reinstall     # wipe and reinstall
+    perdev-update --self-update   # update this script to the latest version
+    perdev-update --local-update  # bump all nix packages to latest
+    perdev-update --rollback      # undo the last switch
+    perdev-update --diff          # see what changed in the last switch
+    perdev-update --generations   # list all generations
 EOF
 }
 
