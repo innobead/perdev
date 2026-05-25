@@ -41,7 +41,7 @@
 
     brews = [
       # ── CLI utilities ────────────────────────────────────────────────
-      "ripgrep" "fd" "fzf" "bat" "eza" "git" "git-delta"
+      "ripgrep" "fd" "fzf" "bat" "eza" "git" "git-delta" "rsync"
       "jq" "yq" "just" "age" "sops" "mkcert"
       "httpie" "curlie" "grpcurl"
       "htop" "dust" "procs"

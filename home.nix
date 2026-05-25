@@ -189,7 +189,7 @@
     # Linux — managed by Nix; on macOS Homebrew installs these instead
     lib.optionals (!isDarwin) [
       # ── CLI utilities ─────────────────────────────────────────────
-      ripgrep fd fzf bat eza delta jq yq-go
+      ripgrep fd fzf bat eza delta jq yq-go rsync
       just age sops mkcert
       httpie curlie grpcurl
       htop dust procs
