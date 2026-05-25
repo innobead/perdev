@@ -128,8 +128,9 @@
   # programs.direnv does not support package = null; Nix installs it as a side
   # effect of config generation. Brew version takes PATH precedence on macOS.
   programs.direnv = {
-    enable            = true;
-    nix-direnv.enable = true;
+    enable                   = true;
+    enableNushellIntegration = false;  # custom hook in config.nu uses PATH-based which direnv
+    nix-direnv.enable        = true;
   };
 
   # ── Tmux ──────────────────────────────────────────────────────────────────
