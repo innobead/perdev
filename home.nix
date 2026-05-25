@@ -16,8 +16,6 @@
   programs.home-manager.enable = true;
 
   # ── Nushell ───────────────────────────────────────────────────────────────
-  # extraEnv / extraConfig are appended to HM-generated env.nu / config.nu,
-  # preserving all integration snippets from programs.* modules below.
   programs.nushell = {
     enable      = true;
     extraEnv    = builtins.readFile ./configs/nushell/env.nu;
@@ -39,6 +37,8 @@
   };
 
   # ── Starship prompt ───────────────────────────────────────────────────────
+  # Nix package needed to generate nushell init script at build time.
+  # Brew's version takes PATH precedence at runtime on macOS.
   programs.starship = {
     enable                   = true;
     enableNushellIntegration = true;
@@ -50,12 +50,14 @@
   };
 
   # ── Carapace (universal completion engine) ────────────────────────────────
+  # Nix package needed to generate nushell init script at build time.
   programs.carapace = {
     enable                   = true;
     enableNushellIntegration = true;
   };
 
   # ── Zoxide (smart cd) ─────────────────────────────────────────────────────
+  # Nix package needed to generate nushell init script at build time.
   programs.zoxide = {
     enable                   = true;
     enableNushellIntegration = true;
@@ -63,6 +65,7 @@
   };
 
   # ── Atuin (shell history) ─────────────────────────────────────────────────
+  # Nix package needed to generate nushell init script at build time.
   programs.atuin = {
     enable                   = true;
     enableNushellIntegration = true;
@@ -76,32 +79,33 @@
   };
 
   # ── Ghostty ───────────────────────────────────────────────────────────────
-  # macOS: ghostty-bin (pre-built); pkgs.ghostty source build is broken on Darwin.
+  # macOS: installed via Homebrew cask — package = null skips Nix install.
   # Linux: pkgs.ghostty works on Mesa/Intel. For NVIDIA, wrap manually with nixGL.
   programs.ghostty = {
     enable  = true;
-    package = if isDarwin
-      then pkgs.ghostty-bin
-      else pkgs.ghostty;
+    package = if isDarwin then null else pkgs.ghostty;
     settings = {
-      command       = "${pkgs.nushell}/bin/nu";
+      # On macOS nu is brew-managed; on Linux use the Nix store path.
+      command       = if isDarwin then "/opt/homebrew/bin/nu" else "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
       theme         = "Catppuccin Mocha";
     } // lib.optionalAttrs (!isDarwin) {
-      # GTK/Wayland window decoration — Linux only
       "window-decoration" = "server";
     };
   };
 
   # ── Git ───────────────────────────────────────────────────────────────────
+  # macOS: package = null — git and delta are brew-managed.
+  # HM still generates ~/.config/git/config and wires delta as the pager.
   programs.delta = {
-    enable                = true;
-    enableGitIntegration  = true;
+    enable               = true;
+    enableGitIntegration = true;
   };
 
   programs.git = {
     enable   = true;
+    package  = if isDarwin then null else pkgs.git;
     settings = {
       init.defaultBranch   = "main";
       pull.rebase          = true;
@@ -110,6 +114,8 @@
   };
 
   # ── Neovim ────────────────────────────────────────────────────────────────
+  # programs.neovim does not support package = null; Nix installs it as a side
+  # effect of config generation. Brew version takes PATH precedence on macOS.
   programs.neovim = {
     enable        = true;
     defaultEditor = true;
@@ -119,6 +125,8 @@
   };
 
   # ── Direnv (per-directory envs; nix-direnv caches nix evaluations) ────────
+  # programs.direnv does not support package = null; Nix installs it as a side
+  # effect of config generation. Brew version takes PATH precedence on macOS.
   programs.direnv = {
     enable            = true;
     nix-direnv.enable = true;
@@ -127,16 +135,24 @@
   # ── Tmux ──────────────────────────────────────────────────────────────────
   programs.tmux = {
     enable       = true;
+    package      = if isDarwin then null else pkgs.tmux;
     clock24      = true;
     historyLimit = 10000;
     keyMode      = "vi";
   };
 
   # ── GitHub CLI ────────────────────────────────────────────────────────────
-  programs.gh.enable = true;
+  # programs.gh does not support package = null; Nix installs it as a side
+  # effect of config generation. Brew version takes PATH precedence on macOS.
+  programs.gh = {
+    enable = true;
+  };
 
   # ── Lazygit ───────────────────────────────────────────────────────────────
-  programs.lazygit.enable = true;
+  programs.lazygit = {
+    enable  = true;
+    package = if isDarwin then null else pkgs.lazygit;
+  };
 
   # ── Ollama service ────────────────────────────────────────────────────────
   # Linux: systemd user service. macOS: launchd user agent.
