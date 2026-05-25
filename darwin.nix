@@ -71,7 +71,8 @@
       "tilt-dev/homebrew-tap/tilt"
 
       # ── Shell / terminal ─────────────────────────────────────────────
-      "nushell" "starship" "carapace" "zoxide" "atuin"
+      # nushell/starship/carapace/zoxide/atuin: Nix-managed via programs.* in home.nix
+      # (HM uses Nix packages at build time to generate nushell integration scripts)
       "direnv" "tmux" "neovim" "lazygit" "gh"
 
       # ── AI tools ─────────────────────────────────────────────────────

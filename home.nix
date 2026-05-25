@@ -85,8 +85,8 @@
     enable  = true;
     package = if isDarwin then null else pkgs.ghostty;
     settings = {
-      # On macOS nu is brew-managed; on Linux use the Nix store path.
-      command       = if isDarwin then "/opt/homebrew/bin/nu" else "${pkgs.nushell}/bin/nu";
+      # nushell is Nix-managed on both platforms via programs.nushell
+      command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
       theme         = "Catppuccin Mocha";
