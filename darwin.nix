@@ -84,6 +84,7 @@
       "claude-code"       # Anthropic agentic coding CLI
       "copilot-cli"       # GitHub Copilot CLI
       "antigravity-cli"   # mac-only — not available as formula
+      "tunnelblick"       # VPN client (zap stanza needs sudo; keep managed to avoid removal)
       "font-jetbrains-mono-nerd-font"
     ];
 

@@ -53,7 +53,7 @@
             {
               home-manager = {
                 useGlobalPkgs    = true;
-                useUserPackages  = true;
+                useUserPackages  = false;  # keep packages in ~/.nix-profile (HM-generated configs reference this path)
                 extraSpecialArgs = { isDarwin = true; nixgl = null; };
                 users.${username} = { lib, ... }: {
                   imports = [ ./home.nix ];
