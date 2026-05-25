@@ -25,6 +25,7 @@ Manage your perdev workstation environment.
 Options:
   (no flags)         Install if not installed; upgrade (pull + switch) if installed
   --reinstall        Uninstall then reinstall from scratch
+  --self-update      Replace this script with the latest version from GitHub
   --local-update     Update flake.lock to latest packages and reapply (no git pull)
   --rollback [N]     Roll back to generation N (default: previous generation)
   --diff [N]         Show package changes vs generation N (default: previous)
@@ -34,6 +35,7 @@ Options:
 Examples:
   perdev-update                 # install or upgrade
   perdev-update --reinstall     # wipe and reinstall
+  perdev-update --self-update   # update this script to the latest version
   perdev-update --local-update  # bump all nix packages to latest
   perdev-update --rollback      # undo the last switch
   perdev-update --diff          # see what changed in the last switch
@@ -43,12 +45,13 @@ EOF
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
-MODE="auto"       # auto | reinstall | local-update | rollback | diff | generations
+MODE="auto"       # auto | reinstall | self-update | local-update | rollback | diff | generations
 GEN_ARG=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --reinstall)      MODE="reinstall"; shift ;;
+    --self-update)    MODE="self-update"; shift ;;
     --local-update)   MODE="local-update"; shift ;;
     --rollback)       MODE="rollback"; shift
                       [[ $# -gt 0 && "$1" != --* ]] && { GEN_ARG="$1"; shift; } ;;
@@ -139,6 +142,21 @@ case "$MODE" in
       bash "$REPO_DIR/uninstall.sh" --force
     fi
     bash "$REPO_DIR/setup.sh"
+    ;;
+
+  self-update)
+    _SELF_URL="https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh"
+    _SELF="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "$0")"
+    info "Downloading latest perdev-update from GitHub..."
+    if curl -fsSL "$_SELF_URL" -o "${_SELF}.tmp"; then
+      chmod +x "${_SELF}.tmp"
+      mv "${_SELF}.tmp" "$_SELF"
+      info "Self-update complete: $_SELF"
+    else
+      rm -f "${_SELF}.tmp"
+      error "Download failed."
+      exit 1
+    fi
     ;;
 
   local-update)
