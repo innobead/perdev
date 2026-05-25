@@ -76,7 +76,6 @@
 
       # ── AI tools ─────────────────────────────────────────────────────
       "ollama" "llm" "rtk"
-      "antigravity-cli"   # mac-only — not available in nixpkgs
       "gemini-cli"
     ];
 
@@ -84,6 +83,7 @@
       "ghostty"           # terminal emulator (pre-built binary)
       "claude-code"       # Anthropic agentic coding CLI
       "copilot-cli"       # GitHub Copilot CLI
+      "antigravity-cli"   # mac-only — not available as formula
       "font-jetbrains-mono-nerd-font"
     ];
 
