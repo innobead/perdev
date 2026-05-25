@@ -126,11 +126,11 @@ fi
 if $IS_MAC; then
   section "2/6  nix-darwin + Home Manager — darwin-rebuild"
   echo "Profile: mac  (darwin.nix manages Homebrew packages; home.nix manages shell configs)"
-  if nix run nix-darwin#darwin-rebuild -- switch \
+  if sudo nix run nix-darwin#darwin-rebuild -- switch \
        --flake "${REPO_DIR}#mac" \
        --impure \
        -v 2>/dev/null || \
-     nix --extra-experimental-features "nix-command flakes" \
+     sudo nix --extra-experimental-features "nix-command flakes" \
        run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
        --flake "${REPO_DIR}#mac" \
        --impure 2>/dev/null; then

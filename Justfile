@@ -25,34 +25,29 @@ install force="":
 
 # Pull latest perdev config from the remote repo and reapply
 update:
+    bash perdev-update.sh
+
+# Apply current local config without pulling from remote or updating flake.lock (local dev use)
+apply:
     #!/usr/bin/env bash
     set -euo pipefail
-    REPO_DIR="${HOME}/.local/share/perdev"
-    if [ ! -d "$REPO_DIR/.git" ]; then
-        echo "perdev repo not found at $REPO_DIR — run: just install"
-        exit 1
-    fi
-    cd "$REPO_DIR"
-    git fetch origin main
-    if ! git diff-index --quiet HEAD --; then
-        git stash
-    fi
-    git merge origin/main
     if [ "$(uname -s)" = "Darwin" ]; then
-        nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
-          || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
+        DR="/run/current-system/sw/bin/darwin-rebuild"
+        [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"
+        sudo $DR switch --flake ".#mac" --impure -v
     else
         nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
     fi
 
-# Update flake.lock to latest package versions and reapply (local dev use)
+# Update flake.lock to latest package versions and reapply from current directory (local dev use)
 local-update:
     #!/usr/bin/env bash
     set -euo pipefail
     nix flake update
     if [ "$(uname -s)" = "Darwin" ]; then
-        nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#mac" --impure -v \
-          || nix run nixpkgs#home-manager -- switch --flake ".#mac" --impure -v
+        DR="/run/current-system/sw/bin/darwin-rebuild"
+        [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"
+        sudo $DR switch --flake ".#mac" --impure -v
     else
         nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
     fi
@@ -65,39 +60,15 @@ uninstall:
 
 # List all Home Manager generations
 generations:
-    home-manager generations
+    bash perdev-update.sh --generations
 
 # Roll back to generation N (default: previous generation)
 rollback gen="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [ -n "{{gen}}" ]; then
-        profile_dir="$HOME/.local/state/nix/profiles"
-        [ -d "$profile_dir" ] || profile_dir="/nix/var/nix/profiles/per-user/$USER"
-        home-manager generations | awk -v g="{{gen}}" '$0 ~ g {print $NF}' | head -1 | xargs -I{} {}/activate
-    else
-        home-manager switch --rollback
-    fi
+    bash perdev-update.sh --rollback {{gen}}
 
 # Show package version changes between generation N and current (default: previous)
 diff gen="":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    profile_dir="$HOME/.local/state/nix/profiles"
-    [ -d "$profile_dir" ] || profile_dir="/nix/var/nix/profiles/per-user/$USER"
-    current_link="$profile_dir/home-manager"
-    if [ -n "{{gen}}" ]; then
-        target_link="$profile_dir/home-manager-{{gen}}-link"
-    else
-        current_num=$(home-manager generations | head -1 | awk '{print $NF}' | grep -o '[0-9]*' | tail -1)
-        prev=$((current_num - 1))
-        if [ "$prev" -lt 1 ]; then
-            echo "No previous generation found."
-            exit 0
-        fi
-        target_link="$profile_dir/home-manager-${prev}-link"
-    fi
-    nvd diff "$target_link" "$current_link"
+    bash perdev-update.sh --diff {{gen}}
 
 # ── Tests (dev) ───────────────────────────────────────────────────────────────
 

@@ -61,21 +61,11 @@ info "Nix: $(nix --version)"
 # --impure is required so builtins.getEnv "USER" / "HOME" resolve correctly.
 if [[ "$IS_MAC" == "true" ]]; then
   # macOS: use nix-darwin for system-level config + Home Manager as a module.
-  # Falls back to home-manager only if darwin-rebuild is unavailable.
   info "Applying nix-darwin config for macOS (user: $USER)..."
-  if nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
+  sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch \
        --flake "${FLAKE_DIR}#mac" \
-       --impure; then
-    info "nix-darwin configuration applied."
-  else
-    warn "darwin-rebuild unavailable — falling back to home-manager switch..."
-    nix run nixpkgs#home-manager -- switch \
-      --flake "${FLAKE_DIR}#mac" \
-      --impure \
-      -b bak \
-      -v
-    info "Home Manager configuration applied (nix-darwin fallback)."
-  fi
+       --impure
+  info "nix-darwin configuration applied."
 else
   info "Applying Home Manager config for profile '${HM_PROFILE}' (user: $USER)..."
   nix run nixpkgs#home-manager -- switch \
@@ -143,7 +133,7 @@ if [[ "$IS_MAC" == "true" ]]; then
   info "  4. Open Ghostty — it will launch nushell automatically"
   info ""
   info "  To apply macOS system defaults (Dock, Finder, Touch ID sudo, Homebrew):"
-  info "    darwin-rebuild switch --flake ${FLAKE_DIR}#mac --impure"
+  info "    sudo darwin-rebuild switch --flake ${FLAKE_DIR}#mac --impure"
 else
   info "Ubuntu next steps (run in a new terminal):"
   info "  1. bash ${FLAKE_DIR}/scripts/docker-setup.sh      — install Docker CE"

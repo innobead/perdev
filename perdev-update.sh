@@ -79,12 +79,14 @@ _profile_dir() {
 _switch() {
   local profile; profile=$(_detect_profile)
   if [[ "$profile" == "mac" ]]; then
-    if nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v; then
-      info "Configuration applied successfully."
+    # Use installed darwin-rebuild (handles HOME correctly); fall back to nix run on first install.
+    local dr="/run/current-system/sw/bin/darwin-rebuild"
+    if [[ -x "$dr" ]]; then
+      sudo "$dr" switch --flake ".#${profile}" --impure -v
     else
-      warn "darwin-rebuild failed — falling back to home-manager..."
-      nix run nixpkgs#home-manager -- switch --flake ".#${profile}" --impure -v
+      sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v
     fi
+    info "Configuration applied successfully."
   else
     nix run nixpkgs#home-manager -- switch --flake ".#${profile}" --impure -v
   fi

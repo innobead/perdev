@@ -49,24 +49,11 @@ if ! command -v nix &>/dev/null; then
 fi
 pass "Nix: $(nix --version)"
 
-# ── Phase 1: Validate Home Manager config ─────────────────────────────────────
-section "Phase 1 — HM config validation (homeConfigurations.mac)"
-info "Building mac activation package…"
-info "This resolves every package in home.nix against nixpkgs-unstable for aarch64-darwin."
-info "First run: ~10-30 min. Cached runs: <1 min."
-echo ""
-
-nix build "${REPO_DIR}#homeConfigurations.mac.activationPackage" \
-  --no-link \
-  --impure \
-  --print-build-logs 2>&1 | grep -E '(building|fetching|error|warning|^$)' || true
-
-pass "Mac Home Manager config is valid — all packages resolved in nixpkgs"
-
-# ── Phase 1b: Validate nix-darwin config ──────────────────────────────────────
-section "Phase 1b — nix-darwin config validation (darwinConfigurations.mac)"
-info "Building mac darwin system config (darwin.nix + home.nix as HM module)…"
+# ── Phase 1: Validate nix-darwin config ──────────────────────────────────────
+section "Phase 1 — nix-darwin config validation (darwinConfigurations.mac)"
+info "Building mac darwin system (darwin.nix + home.nix as HM module)…"
 info "Verifies system defaults, Homebrew wiring, and HM module integration."
+info "First run: ~10-30 min. Cached runs: <1 min."
 echo ""
 
 nix build "${REPO_DIR}#darwinConfigurations.mac.system" \
@@ -74,7 +61,7 @@ nix build "${REPO_DIR}#darwinConfigurations.mac.system" \
   --impure \
   --print-build-logs 2>&1 | grep -E '(building|fetching|error|warning|^$)' || true
 
-pass "Mac nix-darwin config is valid"
+pass "Mac nix-darwin config is valid — all packages resolved"
 
 # ── Phase 2: Spot-check key binaries ──────────────────────────────────────────
 section "Phase 2 — Binary spot-checks"

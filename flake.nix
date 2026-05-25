@@ -31,7 +31,7 @@
       };
 
       # ── macOS / Apple Silicon profile ─────────────────────────────────────
-      # Run: darwin-rebuild switch --flake .#mac --impure
+      # Run: sudo darwin-rebuild switch --flake .#mac --impure
       #
       # Uses nix-darwin for system-level config (defaults, Homebrew, launchd)
       # with Home Manager as a nix-darwin module for user-level config.
@@ -62,14 +62,5 @@
             }
           ];
         };
-
-      # Keep homeConfigurations.mac as a fallback for home-manager switch without nix-darwin
-      homeConfigurations."mac" = home-manager.lib.homeManagerConfiguration {
-        pkgs = darwinPkgs;
-        extraSpecialArgs = { nixgl = null; isDarwin = true; };
-        modules = [
-          ./home.nix  # no nixGL module — macOS uses native Metal/OpenGL
-        ];
-      };
     };
 }
