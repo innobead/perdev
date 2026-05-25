@@ -146,7 +146,9 @@ case "$MODE" in
 
   self-update)
     _SELF_URL="https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh"
-    _SELF="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "$0")"
+    # Always write to the install location — realpath would resolve the HM
+    # symlink into the read-only Nix store, making the write fail.
+    _SELF="${HOME}/.local/bin/perdev-update"
     info "Downloading latest perdev-update from GitHub..."
     if curl -fsSL "$_SELF_URL" -o "${_SELF}.tmp"; then
       chmod +x "${_SELF}.tmp"
