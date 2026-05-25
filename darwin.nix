@@ -30,7 +30,7 @@
     enable = true;
     onActivation = {
       autoUpdate  = false;
-      cleanup     = "zap";   # removes unlisted formulae/casks on darwin-rebuild
+      cleanup     = "none";   # never remove user-installed packages outside this config
       upgrade     = false;
     };
 
@@ -84,7 +84,6 @@
       "claude-code"       # Anthropic agentic coding CLI
       "copilot-cli"       # GitHub Copilot CLI
       "antigravity-cli"   # mac-only — not available as formula
-      "tunnelblick"       # VPN client (zap stanza needs sudo; keep managed to avoid removal)
       "font-jetbrains-mono-nerd-font"
     ];
 
