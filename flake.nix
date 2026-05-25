@@ -37,7 +37,11 @@
       # with Home Manager as a nix-darwin module for user-level config.
       darwinConfigurations."mac" =
         let
-          username = builtins.getEnv "USER";
+          # Prefer SUDO_USER (set by sudo) so darwin-rebuild works correctly
+          # when invoked with `sudo` — USER would otherwise be "root".
+          username =
+            let sudoUser = builtins.getEnv "SUDO_USER";
+            in if sudoUser != "" then sudoUser else builtins.getEnv "USER";
         in
         nix-darwin.lib.darwinSystem {
           system = "aarch64-darwin";
