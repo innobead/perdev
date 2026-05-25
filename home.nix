@@ -269,5 +269,19 @@
     executable = true;
   };
 
+  # ── macOS: symlink nushell config dir to XDG location ───────────────────────
+  # nushell on macOS defaults to ~/Library/Application Support/nushell/
+  # but HM writes configs to ~/.config/nushell/ (XDG). Symlink so they match.
+  home.activation.nushellMacOSConfig = lib.mkIf isDarwin (lib.hm.dag.entryAfter ["writeBoundary"] ''
+    mac_dir="$HOME/Library/Application Support/nushell"
+    nix_dir="$HOME/.config/nushell"
+    if [ -d "$mac_dir" ] && [ ! -L "$mac_dir" ]; then
+      $DRY_RUN_CMD mv "$mac_dir" "$mac_dir.bak"
+    fi
+    if [ ! -L "$mac_dir" ]; then
+      $DRY_RUN_CMD ln -sf "$nix_dir" "$mac_dir"
+    fi
+  '');
+
   xdg.enable = true;
 }
