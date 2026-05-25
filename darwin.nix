@@ -76,7 +76,7 @@
 
       # ── AI tools ─────────────────────────────────────────────────────
       "ollama" "llm" "rtk"
-      "antigravity"   # mac-only — not available in nixpkgs
+      "antigravity-cli"   # mac-only — not available in nixpkgs
       "gemini-cli"
     ];
 
