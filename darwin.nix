@@ -6,13 +6,18 @@
 # through Homebrew here. Home Manager (home.nix) handles only shell/program
 # configuration (configs, integrations) — it does NOT install packages on macOS.
 #
-# Apply with: darwin-rebuild switch --flake .#mac --impure
+# Apply with: sudo darwin-rebuild switch --flake .#mac --impure
 # Or via: bash setup.sh
 
 {
   # ── Required nix-darwin fields ────────────────────────────────────────────
   system.stateVersion = 6;
-  system.primaryUser  = builtins.getEnv "USER";
+  # sudo resets $USER to root; $SUDO_USER holds the original invoking user.
+  # Falls back to $USER when not using sudo (e.g. CI or first-time bootstrap).
+  system.primaryUser = let
+    sudoUser = builtins.getEnv "SUDO_USER";
+    user     = builtins.getEnv "USER";
+  in if sudoUser != "" then sudoUser else user;
 
   # Determinate Nix manages the Nix daemon — disable nix-darwin's conflicting
   # Nix management so darwin-rebuild switch succeeds.
@@ -29,9 +34,14 @@
       upgrade     = false;
     };
 
+    taps = [
+      "oven-sh/bun"            # bun JavaScript runtime (no formula in homebrew-core)
+      "tilt-dev/homebrew-tap"  # tilt dev environment tool
+    ];
+
     brews = [
       # ── CLI utilities ────────────────────────────────────────────────
-      "ripgrep" "fd" "fzf" "bat" "eza" "git-delta"
+      "ripgrep" "fd" "fzf" "bat" "eza" "git" "git-delta"
       "jq" "yq" "just" "age" "sops" "mkcert"
       "httpie" "curlie" "grpcurl"
       "htop" "dust" "procs"
@@ -47,7 +57,7 @@
       "python3" "uv"
 
       # ── JavaScript ───────────────────────────────────────────────────
-      "bun"
+      "oven-sh/bun/bun"
 
       # ── Container / OCI ──────────────────────────────────────────────
       "dive" "crane" "cosign" "lazydocker"
@@ -58,7 +68,7 @@
       "kubectl" "helm" "kind" "k9s" "kubectx" "kustomize"
       "stern" "kubeseal"
       "fluxcd/tap/flux"
-      "tilt-dev/tap/tilt"
+      "tilt-dev/homebrew-tap/tilt"
 
       # ── Shell / terminal ─────────────────────────────────────────────
       "nushell" "starship" "carapace" "zoxide" "atuin"
@@ -75,14 +85,6 @@
       "claude-code"       # Anthropic agentic coding CLI
       "copilot-cli"       # GitHub Copilot CLI
       "font-jetbrains-mono-nerd-font"
-
-      # ── GUI apps ─────────────────────────────────────────────────────
-      "1password"
-      "raycast"
-      "arc"
-      "slack"
-      "zoom"
-      "obs"
     ];
 
     masApps = {};
