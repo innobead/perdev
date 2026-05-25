@@ -6,8 +6,10 @@
 # profile paths are absent. Prepend them here so atuin/zoxide hooks can find
 # their binaries before config.nu runs.
 
-# ── PATH: Nix profiles + user tool directories ────────────────────────────────
+# ── PATH: Nix profiles + Homebrew + user tool directories ────────────────────
 $env.PATH = ($env.PATH | split row (char esep) | prepend [
+    "/opt/homebrew/bin"          # macOS: brew-managed packages (git, neovim, etc.)
+    "/opt/homebrew/sbin"
     "/nix/var/nix/profiles/default/bin"
     ($env.HOME | path join ".nix-profile" "bin")
     ($env.HOME | path join ".cargo" "bin")
