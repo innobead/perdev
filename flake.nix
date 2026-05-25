@@ -51,6 +51,12 @@
             ./darwin.nix  # macOS system defaults, Homebrew, system PATH
             home-manager.darwinModules.home-manager
             {
+              # HM's nixos/common.nix looks up config.users.users.${name} to
+              # derive username/homeDirectory — must define the user here.
+              users.users.${username} = {
+                name = username;
+                home = "/Users/${username}";
+              };
               home-manager = {
                 useGlobalPkgs    = true;
                 useUserPackages  = false;  # keep packages in ~/.nix-profile (HM-generated configs reference this path)
