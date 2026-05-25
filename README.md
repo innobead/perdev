@@ -245,4 +245,7 @@ Spins up a fresh Ubuntu container, installs Nix with `--init none` (no systemd n
 - **Rust**: only `rustup` is installed via Nix. Do not add `pkgs.cargo` or `pkgs.rustc` alongside it — they conflict. Use `rustup toolchain install stable` to get the compiler.
 - **JavaScript**: `bun` is the runtime and package manager. Global packages land in `~/.bun/bin`.
 - **`stateVersion`**: `home.stateVersion` does not need to match the nixpkgs channel. Do not change it unless Home Manager's migration guide instructs you to.
+- **Git identity not required**: `perdev-update` syncs the repo with `git reset --hard origin/main` — no merge commits are created, so no `user.email`/`user.name` git config is needed on fresh installs.
+- **Direnv in nushell**: the direnv hook uses `which direnv` (PATH lookup) rather than a hardcoded Nix store path. This means it survives `nix-collect-garbage` and flake updates without breaking the shell.
+- **`--self-update` writes to `~/.local/bin/perdev-update`**: Home Manager installs the script as a symlink into the read-only Nix store. `--self-update` always writes to the install path directly, replacing the symlink with a real file containing the latest version.
 - **Pinned versions**: `flake.lock` pins every package to a specific version. `perdev-update --local-update` (or `just local-update`) updates the pins to latest.
