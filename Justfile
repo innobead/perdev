@@ -27,6 +27,10 @@ install force="":
 update:
     bash perdev-update.sh
 
+# Update flake.lock to latest package versions without pulling from remote (local dev use)
+nix-flake-update:
+    nix flake update
+
 # Apply current local config without pulling from remote or updating flake.lock (local dev use)
 apply:
     #!/usr/bin/env bash
@@ -43,7 +47,7 @@ apply:
 local-update:
     #!/usr/bin/env bash
     set -euo pipefail
-    nix flake update
+    just nix-flake-update
     if [ "$(uname -s)" = "Darwin" ]; then
         DR="/run/current-system/sw/bin/darwin-rebuild"
         [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"

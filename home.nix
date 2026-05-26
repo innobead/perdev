@@ -89,7 +89,7 @@
       command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
-      theme         = "Catppuccin Mocha";
+      theme         = "JetBrains Darcul";
     } // lib.optionalAttrs (!isDarwin) {
       "window-decoration" = "server";
     };
