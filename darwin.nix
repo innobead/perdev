@@ -12,6 +12,11 @@
 {
   # ── Required nix-darwin fields ────────────────────────────────────────────
   system.stateVersion = 6;
+
+  # Prepend brew paths to system PATH via /etc/zshenv (set-environment script).
+  # Covers all zsh instances (login, non-login, interactive, scripts) and GUI
+  # app child processes that exec zsh — including JetBrains terminal.
+  environment.systemPath = [ "/opt/homebrew/bin" "/opt/homebrew/sbin" ];
   # sudo resets $USER to root; $SUDO_USER holds the original invoking user.
   # Falls back to $USER when not using sudo (e.g. CI or first-time bootstrap).
   system.primaryUser = let

@@ -181,7 +181,6 @@
     };
   };
 
-
   # ── Packages ──────────────────────────────────────────────────────────────
   # On macOS all tools are installed by Homebrew (darwin.nix). Nix only
   # installs packages on Linux here, plus the Apple Container CLI (not in brew).
@@ -255,16 +254,21 @@
     TERMINFO_DIRS = "${config.home.homeDirectory}/.nix-profile/share/terminfo:/usr/share/terminfo";
   };
 
-  home.sessionPath = [
-    # Applied only for POSIX login shells (bash/zsh via ~/.profile).
-    # nushell PATH is set explicitly in configs/nushell/env.nu instead.
-    "/nix/var/nix/profiles/default/bin"
-    "${config.home.homeDirectory}/.nix-profile/bin"
-    "${config.home.homeDirectory}/.cargo/bin"
-    "${config.home.homeDirectory}/.local/bin"
-    "${config.home.homeDirectory}/.bun/bin"
-    "${config.home.homeDirectory}/go/bin"
-  ];
+  home.sessionPath =
+    # macOS: brew-managed tools take PATH precedence over Nix equivalents.
+    lib.optionals isDarwin [
+      "/opt/homebrew/bin"
+      "/opt/homebrew/sbin"
+    ] ++ [
+      # Applied only for POSIX login shells (bash/zsh via ~/.profile).
+      # nushell PATH is set explicitly in configs/nushell/env.nu instead.
+      "/nix/var/nix/profiles/default/bin"
+      "${config.home.homeDirectory}/.nix-profile/bin"
+      "${config.home.homeDirectory}/.cargo/bin"
+      "${config.home.homeDirectory}/.local/bin"
+      "${config.home.homeDirectory}/.bun/bin"
+      "${config.home.homeDirectory}/go/bin"
+    ];
 
   home.file.".local/bin/perdev-update" = {
     source = ./perdev-update.sh;
