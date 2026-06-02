@@ -7,6 +7,11 @@ on:
     # Only evaluate PRs from the flake-update branch pattern
     paths:
       - flake.lock
+  workflow_dispatch:
+    inputs:
+      pr_url:
+        description: "Pull request URL to approve and merge"
+        required: true
 
 permissions: {}
 
@@ -15,11 +20,12 @@ jobs:
     name: Approve and enable auto-merge
     runs-on: ubuntu-latest
 
-    # Only run for PRs opened by github-actions[bot] from a flake-update branch.
-    # This guard prevents the job from firing on unrelated PRs that touch flake.lock.
+    # For pull_request events: only run for PRs opened by github-actions[bot] from a flake-update branch.
+    # For workflow_dispatch: always run (pr_url is required).
     if: |
-      github.actor == 'github-actions[bot]' &&
-      startsWith(github.head_ref, 'flake-update/')
+      github.event_name == 'workflow_dispatch' ||
+      (github.actor == 'github-actions[bot]' &&
+       startsWith(github.head_ref, 'flake-update/'))
 
     permissions:
       pull-requests: write
@@ -35,8 +41,9 @@ jobs:
         uses: hmarr/auto-approve-action@8f929096a962e83ccdfa8afcf855f39f12d4dac7
         with:
           github-token: ${{ secrets.AUTO_MERGE_TOKEN }}
+          pull-request-number: ${{ github.event.pull_request.number }}
 
       - name: Enable auto-merge (squash)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"
+        run: gh pr merge --auto --squash "${{ inputs.pr_url || github.event.pull_request.html_url }}"
