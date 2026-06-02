@@ -32,6 +32,16 @@ jobs:
       contents: write
 
     steps:
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ -n "${{ inputs.pr_url }}" ]; then
+            pr_number=$(echo "${{ inputs.pr_url }}" | grep -oE '[0-9]+$')
+          else
+            pr_number="${{ github.event.pull_request.number }}"
+          fi
+          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+
       - name: Approve PR
         # hmarr/auto-approve-action@v4 (8f929096a962e83ccdfa8afcf855f39f12d4dac7)
         # Uses AUTO_MERGE_TOKEN (fine-grained PAT scoped to this repo,
@@ -41,7 +51,7 @@ jobs:
         uses: hmarr/auto-approve-action@8f929096a962e83ccdfa8afcf855f39f12d4dac7
         with:
           github-token: ${{ secrets.AUTO_MERGE_TOKEN }}
-          pull-request-number: ${{ github.event.pull_request.number }}
+          pull-request-number: ${{ steps.pr.outputs.number }}
 
       - name: Enable auto-merge (squash)
         env:
