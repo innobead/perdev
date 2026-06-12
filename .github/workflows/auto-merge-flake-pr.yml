@@ -1,7 +1,7 @@
 name: Auto-Approve and Merge Flake Update PR
 
 on:
-  pull_request:
+  pull_request_target:
     branches:
       - main
     # Only evaluate PRs from the flake-update branch pattern
