@@ -54,6 +54,7 @@ echo "This will remove:"
 echo "  • AI tools: Claude Code, Gemini CLI, Copilot CLI, LLM plugins, RTK"
 echo "  • Rust stable toolchain (rustup)"
 $IS_MAC && echo "  • Colima VM and its data" || echo "  • Docker CE packages"
+$IS_MAC && echo "  • nix-darwin system configuration (darwin-rebuild state, /etc patches)" || true
 echo "  • Home Manager activation (symlinks and generated configs)"
 echo "  • Nix (/nix store — all Nix-managed packages)"
 echo ""
@@ -70,7 +71,7 @@ if ! $FORCE; then
 fi
 
 # ── Step 1: AI tools ══════════════════════════════════════════════════════════
-section "1/5  AI tools"
+section "1/6  AI tools"
 
 # RTK — remove hook and binary
 if command -v rtk &>/dev/null; then
@@ -134,7 +135,7 @@ else
 fi
 
 # ── Step 2: Rust ══════════════════════════════════════════════════════════════
-section "2/5  Rust"
+section "2/6  Rust"
 if command -v rustup &>/dev/null; then
   echo "Removing Rust toolchains and rustup..."
   rustup self uninstall -y \
@@ -144,7 +145,7 @@ else
 fi
 
 # ── Step 3: Docker / container runtime ═══════════════════════════════════════
-section "3/5  Docker / container runtime"
+section "3/6  Docker / container runtime"
 if $IS_MAC; then
   if command -v colima &>/dev/null; then
     echo "Stopping and deleting Colima VM..."
@@ -170,9 +171,33 @@ else
   fi
 fi
 
-# ── Step 4: Home Manager ══════════════════════════════════════════════════════
-section "4/5  Home Manager"
-if command -v home-manager &>/dev/null; then
+# ── Step 4: nix-darwin (macOS only) ══════════════════════════════════════════
+section "4/6  nix-darwin"
+if $IS_MAC; then
+  if command -v nix &>/dev/null; then
+    echo "Running nix-darwin uninstaller (restores /etc files, removes system profile)..."
+    if sudo nix --extra-experimental-features "nix-command flakes" run nix-darwin#darwin-uninstaller 2>/dev/null; then
+      pass "nix-darwin" "system configuration removed"
+    elif sudo nix --extra-experimental-features "nix-command flakes" \
+           run "github:nix-darwin/nix-darwin#darwin-uninstaller" 2>/dev/null; then
+      pass "nix-darwin" "system configuration removed (via github flake)"
+    else
+      fail "nix-darwin" "uninstaller failed — run manually: sudo nix run nix-darwin#darwin-uninstaller"
+    fi
+  else
+    skip "nix-darwin" "nix not found — already removed or not installed"
+  fi
+else
+  skip "nix-darwin" "Linux — not applicable"
+fi
+
+# ── Step 5: Home Manager ══════════════════════════════════════════════════════
+section "5/6  Home Manager"
+if $IS_MAC; then
+  # On macOS, HM is embedded as a nix-darwin module — no standalone HM generation.
+  # nix-darwin uninstaller (step 4) already removed generated configs and symlinks.
+  skip "Home Manager" "macOS — managed as nix-darwin module; removed in step 4"
+elif command -v home-manager &>/dev/null; then
   echo "Removing Home Manager activation (symlinks and generated configs)..."
   home-manager uninstall \
     && pass "Home Manager" \
@@ -186,8 +211,8 @@ else
   skip "Home Manager" "neither home-manager nor nix found"
 fi
 
-# ── Step 5: Nix ══════════════════════════════════════════════════════════════
-section "5/5  Nix"
+# ── Step 6: Nix ══════════════════════════════════════════════════════════════
+section "6/6  Nix"
 if [[ -x /nix/nix-installer ]]; then
   echo "Running Determinate Systems uninstaller (/nix/nix-installer uninstall)..."
   /nix/nix-installer uninstall --no-confirm \

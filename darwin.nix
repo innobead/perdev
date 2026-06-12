@@ -91,6 +91,7 @@
       "copilot-cli"       # GitHub Copilot CLI
       "antigravity-cli"   # mac-only — not available as formula
       "font-jetbrains-mono-nerd-font"
+      "gcloud-cli"        # Google Cloud CLI (pre-built binary)
     ];
 
     masApps = {};

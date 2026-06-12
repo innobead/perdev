@@ -7,3 +7,4 @@ result-*
 
 # Antigravity CLI workspace state
 .antigravitycli/
+.junie/
