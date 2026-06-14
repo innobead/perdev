@@ -24,8 +24,9 @@ if (which direnv | is-not-empty) {
     }
     $env.config.hooks.pre_prompt = (
         $env.config.hooks.pre_prompt | append [{||
-            if (".envrc" | path exists) or ("DIRENV_FILE" in $env) {
-                direnv export json | from json | load-env
+            let de = (direnv export json | complete)
+            if $de.exit_code == 0 and (($de.stdout | str trim | is-not-empty)) {
+                $de.stdout | from json | load-env
             }
         }]
     )

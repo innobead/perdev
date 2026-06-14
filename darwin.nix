@@ -66,7 +66,7 @@
 
       # ── Container / OCI ──────────────────────────────────────────────
       "dive" "crane" "cosign" "lazydocker"
-      "lima" "colima"
+      "lima" "colima" "qemu"
       "docker" "docker-buildx" "docker-compose"
 
       # ── Kubernetes ───────────────────────────────────────────────────
