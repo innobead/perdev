@@ -1,4 +1,4 @@
-{ lib, stdenvNoCC, fetchurl, autoPatchelfHook, dbus }:
+{ lib, stdenvNoCC, fetchurl, autoPatchelfHook, dbus, libgcc }:
 
 stdenvNoCC.mkDerivation rec {
   pname = "bzr";
@@ -10,7 +10,7 @@ stdenvNoCC.mkDerivation rec {
   };
 
   nativeBuildInputs = [ autoPatchelfHook ];
-  buildInputs = [ dbus ];
+  buildInputs = [ dbus libgcc ];
 
   installPhase = ''
     runHook preInstall
