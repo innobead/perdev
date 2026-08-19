@@ -1,0 +1,48 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ubuntu:
+    name: Ubuntu provisioning
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Check shell syntax
+        run: bash -n setup.sh perdev-update.sh uninstall.sh scripts/*.sh tests/*.sh
+
+      - name: Test Ubuntu profile
+        run: bash tests/test-ubuntu.sh
+
+  macos:
+    name: macOS provisioning
+    runs-on: macos-14
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Install Nix
+        # DeterminateSystems/nix-installer-action@v14
+        uses: DeterminateSystems/nix-installer-action@da36cb69b1c3247ad7a1f931ebfd954a1105ef14
+
+      - name: Test macOS profile
+        run: bash tests/test-mac.sh

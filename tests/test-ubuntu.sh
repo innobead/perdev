@@ -105,9 +105,14 @@ PASS=0; FAIL=0
 # - killer kill uses || true since killer may have already exited (when timeout fires first)
 _check_cmd() {
   local label="$1" pkg="$2"; shift 2
-  local tmpout rc pid killer
+  local installable tmpout rc pid killer
+  if [[ "$pkg" == /*#* ]]; then
+    installable="$pkg"
+  else
+    installable="nixpkgs#$pkg"
+  fi
   tmpout=$(mktemp)
-  nix shell "nixpkgs#$pkg" --command "$@" >"$tmpout" 2>/dev/null &
+  nix shell "$installable" --command "$@" >"$tmpout" 2>/dev/null &
   pid=$!
   ( sleep 60 && kill "$pid" 2>/dev/null ) &
   killer=$!
@@ -150,6 +155,11 @@ _check_cmd "kubectx"          "kubectx"           kubectx    --version 2>/dev/nu
 _check_cmd "kustomize"        "kustomize"         kustomize  version
 _check_cmd "flux"             "fluxcd"            flux       --version
 
+# Cloud and issue tracking
+_check_cmd "aws"              "awscli2"           aws        --version
+_check_cmd "jira"             "jira-cli-go"       jira       version
+_check_cmd "bzr"              "/perdev#bzr"       bzr        --version
+
 # Containers / OCI
 _check_cmd "podman"           "podman"            podman     --version
 _check_cmd "buildah"          "buildah"           buildah    --version
@@ -157,6 +167,7 @@ _check_cmd "skopeo"           "skopeo"            skopeo     --version
 _check_cmd "dive"             "dive"              dive       --version
 _check_cmd "crane"            "crane"             crane      version
 _check_cmd "cosign"           "cosign"            cosign     version
+_check_cmd "trivy"            "trivy"             trivy      --version
 _check_cmd "lazydocker"       "lazydocker"        lazydocker --version 2>/dev/null || true
 
 # AI tools

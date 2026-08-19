@@ -63,10 +63,13 @@ bash setup.sh
 | Docker daemon | Docker CE via apt | [Colima](https://github.com/abiosoft/colima) (Apple VZ backend) |
 | Docker CLI | via Docker CE | `docker-client`, `docker-buildx`, `docker-compose` |
 | Native containers | `podman`, `buildah`, `skopeo` | [Apple Container](https://github.com/apple/container) (`container` CLI) |
-| Image tools | `dive`, `crane`, `cosign`, `lazydocker` | same |
+| Image tools | `dive`, `crane`, `cosign`, `trivy`, `lazydocker` | same |
 
 ### Kubernetes
 `kubectl` · `helm` · `kind` · `k9s` · `kubectx`/`kubens` · `kustomize` · `stern` · `kubeseal` · `flux` · `tilt`
+
+### Cloud & issue tracking
+`aws` · `gcloud` (macOS) · `jira` · `bzr` (Bugzilla CLI)
 
 ### AI development tools
 | Tool | macOS source | Linux source | Purpose |
@@ -81,6 +84,8 @@ bash setup.sh
 
 ### CLI utilities
 `vhs` · `ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
+
+On macOS, [Stats](https://github.com/exelban/stats) provides menu-bar system monitoring.
 
 ---
 

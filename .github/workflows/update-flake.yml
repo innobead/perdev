@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
+      actions: write
       contents: write
       pull-requests: write
 
@@ -42,6 +43,7 @@ jobs:
             2>&1 | tail -20
 
       - name: Open Pull Request
+        id: pull-request
         # peter-evans/create-pull-request@v7 (22a9089034f40e5a961c8808d113e2c98fb63676)
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676
         with:
@@ -56,9 +58,30 @@ jobs:
             **After merging**, users can apply the updated packages locally:
             ```sh
             git pull
-            just upgrade   # runs: just update && just switch
+            just update
             # or, for a fresh install:
             just install
             ```
           labels: dependencies
           add-paths: flake.lock
+
+      - name: Run pull request checks
+        if: |
+          steps.pull-request.outputs.pull-request-operation == 'created' ||
+          steps.pull-request.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_BRANCH: ${{ steps.pull-request.outputs.pull-request-branch }}
+        run: gh workflow run pr-checks.yml --ref "$PR_BRANCH"
+
+      - name: Request approval and merge after checks
+        if: |
+          steps.pull-request.outputs.pull-request-operation == 'created' ||
+          steps.pull-request.outputs.pull-request-operation == 'updated'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.pull-request.outputs.pull-request-url }}
+        run: |
+          gh workflow run auto-merge-flake-pr.yml \
+            --ref main \
+            --field pr_url="$PR_URL"

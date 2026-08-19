@@ -1,4 +1,4 @@
-{ pkgs, lib, config, isDarwin ? false, nixgl ? null, ... }:
+{ pkgs, lib, config, isDarwin ? false, nixgl ? null, bzr ? null, ... }:
 
 {
   # ── Identity ──────────────────────────────────────────────────────────────
@@ -207,12 +207,17 @@
       bun
 
       # ── Container / OCI: shared tools ────────────────────────────
-      dive crane cosign lazydocker
+      dive crane cosign lazydocker trivy
       lima colima docker-client docker-buildx docker-compose
 
       # ── Kubernetes ────────────────────────────────────────────────
       kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal flux
       tilt  # fast iterative Kubernetes dev loop (Tiltfile hot-reload)
+
+      # ── Cloud and issue tracking ──────────────────────────────────
+      awscli2
+      jira-cli-go
+      bzr  # Bugzilla CLI; custom package pinned in packages/bzr.nix
 
       # ── AI tools ─────────────────────────────────────────────────
       (llm.withPlugins {
