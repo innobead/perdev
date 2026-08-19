@@ -21,12 +21,15 @@
     let
       linuxPkgs  = import nixpkgs { system = "x86_64-linux";  config.allowUnfree = true; };
       darwinPkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
+      linuxBzr   = linuxPkgs.callPackage ./packages/bzr.nix {};
     in {
+      packages.x86_64-linux.bzr = linuxBzr;
+
       # ── Ubuntu / Linux profile ─────────────────────────────────────────────
       # Run: home-manager switch --flake .#ubuntu --impure
       homeConfigurations."ubuntu" = home-manager.lib.homeManagerConfiguration {
         pkgs = linuxPkgs;
-        extraSpecialArgs = { isDarwin = false; };
+        extraSpecialArgs = { isDarwin = false; bzr = linuxBzr; };
         modules = [ ./home.nix ];
       };
 

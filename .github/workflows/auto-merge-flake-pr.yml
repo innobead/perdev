@@ -1,46 +1,110 @@
 name: Auto-Approve and Merge Flake Update PR
 
 on:
-  pull_request_target:
-    branches:
-      - main
-    # Only evaluate PRs from the flake-update branch pattern
-    paths:
-      - flake.lock
   workflow_dispatch:
     inputs:
       pr_url:
         description: "Pull request URL to approve and merge"
         required: true
+        type: string
 
 permissions: {}
 
 jobs:
   auto-merge:
-    name: Approve and enable auto-merge
+    name: Approve and merge after checks
     runs-on: ubuntu-latest
-
-    # For pull_request events: only run for PRs opened by github-actions[bot] from a flake-update branch.
-    # For workflow_dispatch: always run (pr_url is required).
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      (github.actor == 'github-actions[bot]' &&
-       startsWith(github.head_ref, 'flake-update/'))
+    timeout-minutes: 50
 
     permissions:
-      pull-requests: write
+      checks: read
       contents: write
+      pull-requests: write
 
     steps:
-      - name: Resolve PR number
+      - name: Validate pull request
         id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ inputs.pr_url }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          if [ -n "${{ inputs.pr_url }}" ]; then
-            pr_number=$(echo "${{ inputs.pr_url }}" | grep -oE '[0-9]+$')
-          else
-            pr_number="${{ github.event.pull_request.number }}"
+          if [[ ! "$PR_URL" =~ ^https://github.com/${REPOSITORY}/pull/[0-9]+$ ]]; then
+            echo "::error::Unexpected pull request URL: $PR_URL"
+            exit 1
           fi
+
+          pr_number="${PR_URL##*/}"
+          head_ref="$(gh pr view "$PR_URL" --json headRefName --jq .headRefName)"
+          head_sha="$(gh pr view "$PR_URL" --json headRefOid --jq .headRefOid)"
+          author="$(gh pr view "$PR_URL" --json author --jq .author.login)"
+          files="$(gh pr view "$PR_URL" --json files --jq '.files[].path')"
+
+          if [[ "$head_ref" != flake-update/* ]]; then
+            echo "::error::Unexpected head branch: $head_ref"
+            exit 1
+          fi
+          if [[ "$author" != "app/github-actions" ]]; then
+            echo "::error::Unexpected pull request author: $author"
+            exit 1
+          fi
+          if [[ "$files" != "flake.lock" ]]; then
+            echo "::error::Automated update must change only flake.lock"
+            exit 1
+          fi
+
           echo "number=$pr_number" >> "$GITHUB_OUTPUT"
+          echo "head-sha=$head_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for provisioning checks
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ steps.pr.outputs.head-sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          deadline=$((SECONDS + 2700))
+          expected=("Ubuntu provisioning" "macOS provisioning")
+
+          while (( SECONDS < deadline )); do
+            checks="$(gh api "repos/${REPOSITORY}/commits/${HEAD_SHA}/check-runs")"
+            pending=false
+
+            for name in "${expected[@]}"; do
+              result="$(
+                jq -r --arg name "$name" '
+                  [.check_runs[] | select(.name == $name)]
+                  | sort_by(.started_at)
+                  | last
+                  | if . == null then "missing"
+                    elif .status != "completed" then .status
+                    else .conclusion
+                    end
+                ' <<< "$checks"
+              )"
+
+              case "$result" in
+                success)
+                  echo "$name: success"
+                  ;;
+                missing|queued|in_progress|pending|waiting|requested)
+                  echo "$name: $result"
+                  pending=true
+                  ;;
+                *)
+                  echo "::error::$name concluded with: $result"
+                  exit 1
+                  ;;
+              esac
+            done
+
+            if [[ "$pending" == false ]]; then
+              exit 0
+            fi
+            sleep 15
+          done
+
+          echo "::error::Timed out waiting for provisioning checks"
+          exit 1
 
       - name: Approve PR
         # hmarr/auto-approve-action@v4 (8f929096a962e83ccdfa8afcf855f39f12d4dac7)
@@ -53,7 +117,9 @@ jobs:
           github-token: ${{ secrets.AUTO_MERGE_TOKEN }}
           pull-request-number: ${{ steps.pr.outputs.number }}
 
-      - name: Enable auto-merge (squash)
+      - name: Merge pull request (squash)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge --auto --squash "${{ inputs.pr_url || github.event.pull_request.html_url }}"
+          HEAD_SHA: ${{ steps.pr.outputs.head-sha }}
+          PR_URL: ${{ inputs.pr_url }}
+        run: gh pr merge --squash --match-head-commit "$HEAD_SHA" "$PR_URL"

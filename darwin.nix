@@ -41,7 +41,8 @@
 
     taps = [
       "oven-sh/bun"            # bun JavaScript runtime (no formula in homebrew-core)
-      "tilt-dev/homebrew-tap"  # tilt dev environment tool
+      "tilt-dev/tap"           # tilt dev environment tool
+      "randomparity/tap"       # bzr Bugzilla CLI
     ];
 
     brews = [
@@ -65,7 +66,7 @@
       "oven-sh/bun/bun"
 
       # ── Container / OCI ──────────────────────────────────────────────
-      "dive" "crane" "cosign" "lazydocker"
+      "dive" "crane" "cosign" "lazydocker" "trivy"
       "lima" "colima" "qemu"
       "docker" "docker-buildx" "docker-compose"
 
@@ -73,7 +74,10 @@
       "kubectl" "helm" "kind" "k9s" "kubectx" "kustomize"
       "stern" "kubeseal"
       "fluxcd/tap/flux"
-      "tilt-dev/homebrew-tap/tilt"
+      "tilt-dev/tap/tilt"
+
+      # ── Cloud and issue tracking ───────────────────────────────────
+      "awscli" "jira-cli" "randomparity/tap/bzr"
 
       # ── Shell / terminal ─────────────────────────────────────────────
       # nushell/starship/carapace/zoxide/atuin: Nix-managed via programs.* in home.nix
@@ -93,6 +97,7 @@
       "font-jetbrains-mono-nerd-font"
       "gcloud-cli"        # Google Cloud CLI (pre-built binary)
       "tunnelblick"       # OpenVPN client (pre-built binary)
+      "stats"             # system monitor for the menu bar
     ];
 
     masApps = {};
