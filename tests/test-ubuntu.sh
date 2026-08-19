@@ -84,11 +84,11 @@ info "This resolves every package in home.nix against nixpkgs-unstable."
 info "First run: ~10-30 min. Cached runs: <1 min."
 echo ""
 
-nix build /perdev#homeConfigurations.ubuntu.activationPackage \
+nix build path:/perdev#homeConfigurations.ubuntu.activationPackage \
   --no-link \
   --impure \
   --option sandbox false \
-  --print-build-logs 2>&1 | grep -E '(building|fetching|error|warning|^$)' || true
+  --print-build-logs 2>&1 | { grep -E '(building|fetching|error|warning|^$)' || true; }
 
 pass "Home Manager config is valid — all packages resolved in nixpkgs"
 
@@ -106,7 +106,7 @@ PASS=0; FAIL=0
 _check_cmd() {
   local label="$1" pkg="$2"; shift 2
   local installable tmpout rc pid killer
-  if [[ "$pkg" == /*#* ]]; then
+  if [[ "$pkg" == path:*#* ]]; then
     installable="$pkg"
   else
     installable="nixpkgs#$pkg"
@@ -158,7 +158,7 @@ _check_cmd "flux"             "fluxcd"            flux       --version
 # Cloud and issue tracking
 _check_cmd "aws"              "awscli2"           aws        --version
 _check_cmd "jira"             "jira-cli-go"       jira       version
-_check_cmd "bzr"              "/perdev#bzr"       bzr        --version
+_check_cmd "bzr"              "path:/perdev#bzr"  bzr        --version
 
 # Containers / OCI
 _check_cmd "podman"           "podman"            podman     --version
