@@ -3,7 +3,7 @@
 #
 # On macOS: all AI tools are installed by Homebrew via darwin.nix
 #   (claude-code cask, copilot-cli cask, gemini-cli, antigravity, rtk, ollama, llm)
-# On Linux: all AI tools are managed by Nix via home.nix
+# On NixOS: all AI tools are managed by Nix via home.nix
 #
 # This script only:
 #   - Verifies AI tools are on PATH

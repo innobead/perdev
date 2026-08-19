@@ -1,17 +1,14 @@
 #!/usr/bin/env bash
 # test-mac.sh — Verify mac provisioning on an actual macOS machine.
 #
-# Unlike test-ubuntu.sh, this runs DIRECTLY on macOS — there are no macOS
+# Unlike test-nixos.sh, this runs DIRECTLY on macOS — there are no macOS
 # Docker/OCI container images (Apple prohibits macOS in containers).
 #
-# Phase 1:  Build the mac Home Manager activation package (homeConfigurations.mac).
-#           Resolves every package in home.nix against nixpkgs-unstable for
-#           aarch64-darwin. Catches bad package names, config errors, conflicts.
-# Phase 1b: Validate the nix-darwin system config (darwinConfigurations.mac).
-#           Verifies darwin.nix system defaults, Homebrew, and HM module wiring.
+# Phase 1: Validate the nix-darwin system config (darwinConfigurations.mac).
+#          Verifies darwin.nix, Homebrew, and embedded Home Manager wiring.
 # Phase 2:  Spot-check key binaries from the nix store.
 #
-# Non-destructive: uses --no-link (Phases 1/1b) and `nix shell` (Phase 2).
+# Non-destructive: uses --no-link (Phase 1) and `nix shell` (Phase 2).
 # Does NOT run darwin-rebuild switch or home-manager switch.
 #
 # Usage:
@@ -31,7 +28,7 @@ section(){ echo ""; echo -e "${B}──── $* ────${N}"; }
 
 # ── Guard: macOS only ─────────────────────────────────────────────────────────
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  fail "test-mac.sh must run on macOS. For Ubuntu, use scripts/test-ubuntu.sh."
+  fail "test-mac.sh must run on macOS. For NixOS, use tests/test-nixos.sh."
 fi
 
 section "Environment"

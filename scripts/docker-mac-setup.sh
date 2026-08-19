@@ -24,7 +24,7 @@ info() { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn() { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
-  echo "This script is for macOS only. Use docker-setup.sh on Ubuntu." >&2
+  echo "This script is for macOS only. Docker is declarative in nixos.nix on NixOS." >&2
   exit 1
 fi
 

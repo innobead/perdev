@@ -35,11 +35,14 @@ jobs:
       - name: Update flake inputs
         run: nix flake update
 
-      - name: Validate ubuntu profile (dry-run)
+      - name: Validate NixOS profile (dry-run)
+        env:
+          PERDEV_USER: perdev
         run: |
-          nix build .#homeConfigurations.ubuntu.activationPackage \
+          nix build .#nixosConfigurations.nixos.config.system.build.toplevel \
             --dry-run \
             --no-link \
+            --impure \
             2>&1 | tail -20
 
       - name: Open Pull Request
