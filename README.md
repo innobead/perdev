@@ -36,8 +36,7 @@ bash setup.sh
 
 ## Tool highlights
 
-- **Shell:** Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv;
-  Ghostty on macOS
+- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv
 - **Languages:** Go, Rust via rustup, Python with uv, JavaScript with Bun
 - **Containers:** Docker, Colima on macOS, Podman/Buildah/Skopeo on NixOS,
   Apple Container on macOS, Dive, Crane, Cosign, Trivy, Lazydocker
@@ -51,8 +50,8 @@ bash setup.sh
   age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats on macOS
 
 Bash remains the login shell for compatibility and automatically enters
-Nushell for interactive sessions. On macOS, Ghostty launches Nushell directly.
-Ollama starts as a user service through systemd on NixOS and launchd on macOS.
+Nushell for interactive sessions. Ghostty launches Nushell directly. Ollama
+starts as a user service through systemd on NixOS and launchd on macOS.
 
 ## Manage the environment
 

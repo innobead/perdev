@@ -74,10 +74,11 @@
     };
   };
 
-  # ── Ghostty (macOS workstation only) ─────────────────────────────────────
-  programs.ghostty = lib.mkIf isDarwin {
+  # ── Ghostty ───────────────────────────────────────────────────────────────
+  programs.ghostty = {
     enable  = true;
-    package = null;
+    # Homebrew provides Ghostty on macOS; Nix installs it on NixOS.
+    package = if isDarwin then null else pkgs.ghostty;
     settings = {
       command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
@@ -179,6 +180,7 @@
     # NixOS — managed by Nix; on macOS Homebrew installs these instead
     lib.optionals (!isDarwin) [
       ghostty.terminfo  # xterm-ghostty support for remote SSH sessions
+      nerd-fonts.jetbrains-mono
 
       # ── CLI utilities ─────────────────────────────────────────────
       ripgrep fd fzf bat eza delta jq yq-go rsync
