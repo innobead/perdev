@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 jobs:
-  ubuntu:
-    name: Ubuntu provisioning
+  nixos:
+    name: NixOS provisioning
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -27,8 +27,12 @@ jobs:
       - name: Check shell syntax
         run: bash -n setup.sh perdev-update.sh uninstall.sh scripts/*.sh tests/*.sh
 
-      - name: Test Ubuntu profile
-        run: bash tests/test-ubuntu.sh
+      - name: Install Nix
+        # DeterminateSystems/nix-installer-action@v14
+        uses: DeterminateSystems/nix-installer-action@da36cb69b1c3247ad7a1f931ebfd954a1105ef14
+
+      - name: Test NixOS profile
+        run: bash tests/test-nixos.sh
 
   macos:
     name: macOS provisioning

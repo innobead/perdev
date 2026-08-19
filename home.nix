@@ -3,14 +3,10 @@
 {
   # ── Identity ──────────────────────────────────────────────────────────────
   # builtins.getEnv requires --impure (handled in install.sh).
-  # HOME resolves to /home/$USER on Linux and /Users/$USER on macOS.
+  # HOME resolves to /home/$USER on NixOS and /Users/$USER on macOS.
   home.username      = builtins.getEnv "USER";
   home.homeDirectory = builtins.getEnv "HOME";
   home.stateVersion  = "24.11";
-
-  # ── Non-NixOS Linux compatibility ─────────────────────────────────────────
-  # Enables font/icon caches, XDG integration, etc. on Ubuntu.
-  targets.genericLinux.enable = !isDarwin;
 
   # ── Home Manager self-management ──────────────────────────────────────────
   programs.home-manager.enable = true;
@@ -79,19 +75,15 @@
   };
 
   # ── Ghostty ───────────────────────────────────────────────────────────────
-  # macOS: installed via Homebrew cask — package = null skips Nix install.
-  # Linux: pkgs.ghostty works on Mesa/Intel. For NVIDIA, wrap manually with nixGL.
   programs.ghostty = {
     enable  = true;
+    # Homebrew provides Ghostty on macOS; Nix installs it on NixOS.
     package = if isDarwin then null else pkgs.ghostty;
     settings = {
-      # nushell is Nix-managed on both platforms via programs.nushell
       command       = "${pkgs.nushell}/bin/nu";
       "font-family" = "JetBrainsMono Nerd Font";
       "font-size"   = 13;
       theme         = "Github Dark";
-    } // lib.optionalAttrs (!isDarwin) {
-      "window-decoration" = "server";
     };
   };
 
@@ -156,7 +148,7 @@
   };
 
   # ── Ollama service ────────────────────────────────────────────────────────
-  # Linux: systemd user service. macOS: launchd user agent.
+  # NixOS: systemd user service. macOS: launchd user agent.
   # Pull models after first start: ollama pull llama3.2
   systemd.user.services.ollama = lib.mkIf (!isDarwin) {
     Unit.Description = "Ollama local LLM server";
@@ -183,10 +175,13 @@
 
   # ── Packages ──────────────────────────────────────────────────────────────
   # On macOS all tools are installed by Homebrew (darwin.nix). Nix only
-  # installs packages on Linux here, plus the Apple Container CLI (not in brew).
+  # installs packages on NixOS here, plus the Apple Container CLI (not in brew).
   home.packages = with pkgs;
-    # Linux — managed by Nix; on macOS Homebrew installs these instead
+    # NixOS — managed by Nix; on macOS Homebrew installs these instead
     lib.optionals (!isDarwin) [
+      ghostty.terminfo  # xterm-ghostty support for remote SSH sessions
+      nerd-fonts.jetbrains-mono
+
       # ── CLI utilities ─────────────────────────────────────────────
       ripgrep fd fzf bat eza delta jq yq-go rsync
       just age sops mkcert
@@ -230,12 +225,9 @@
       claude-code  # Anthropic agentic coding CLI
       gemini-cli   # Google Gemini CLI
       antigravity  # Google Antigravity CLI
-
-      # ── Fonts ─────────────────────────────────────────────────────
-      nerd-fonts.jetbrains-mono
     ]
 
-    # ── Linux-only container / OCI tools ──────────────────────────────────
+    # ── NixOS-only container / OCI tools ──────────────────────────────────
     ++ lib.optionals (!isDarwin) [
       podman   # rootless container runtime
       buildah  # OCI image builder (daemonless)

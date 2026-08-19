@@ -63,7 +63,7 @@ jobs:
           REPOSITORY: ${{ github.repository }}
         run: |
           deadline=$((SECONDS + 2700))
-          expected=("Ubuntu provisioning" "macOS provisioning")
+          expected=("NixOS provisioning" "macOS provisioning")
 
           while (( SECONDS < deadline )); do
             checks="$(gh api "repos/${REPOSITORY}/commits/${HEAD_SHA}/check-runs")"

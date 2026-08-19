@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install.sh — Minimal bootstrap: Nix + Home Manager only.
+# install.sh — Minimal NixOS or macOS system bootstrap.
 #
 # Use setup.sh (repo root) for a full environment setup including Docker,
 # AI tools, and Ollama models. This script only handles steps 1-3 of setup.sh
@@ -9,21 +9,22 @@
 #   bash install.sh
 #
 # Idempotent: safe to run multiple times.
-# Detects OS automatically: uses profile "ubuntu" on Linux, "mac" on macOS.
-# After: run docker-setup.sh (Linux) or docker-mac-setup.sh (macOS),
-#        then ai-tools-setup.sh in a new shell.
+# Detects NixOS or macOS automatically.
 
 set -euo pipefail
 
 FLAKE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Detect OS and pick the matching Home Manager profile
+# Detect OS and pick the matching system profile
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  HM_PROFILE="${HM_PROFILE:-mac}"
+  PROFILE="${PROFILE:-mac}"
   IS_MAC=true
-else
-  HM_PROFILE="${HM_PROFILE:-ubuntu}"
+elif [[ -e /etc/NIXOS ]]; then
+  PROFILE="${PROFILE:-nixos}"
   IS_MAC=false
+else
+  echo "Unsupported platform: perdev supports NixOS and macOS only." >&2
+  exit 1
 fi
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
@@ -31,16 +32,16 @@ info()  { echo -e "${GREEN}[INFO]${NC}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
-info "Platform: $(uname -s) — using Home Manager profile '${HM_PROFILE}'"
+info "Platform: $(uname -s) — using system profile '${PROFILE}'"
 
 # ── Step 1: Install Nix ───────────────────────────────────────────────────────
-if command -v nix &>/dev/null; then
+if [[ "$IS_MAC" == "false" ]]; then
+  info "Nix provided by NixOS: $(nix --version)"
+elif command -v nix &>/dev/null; then
   info "Nix already installed: $(nix --version)"
 else
   info "Installing Nix via Determinate Systems installer..."
-  # DS installer: enables flakes + nix-command by default.
-  # On Ubuntu: multi-user install via systemd.
-  # On macOS: multi-user install via launchd.
+  # DS installer enables flakes + nix-command and uses launchd on macOS.
   curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm
 fi
 
@@ -67,24 +68,22 @@ if [[ "$IS_MAC" == "true" ]]; then
        --impure
   info "nix-darwin configuration applied."
 else
-  info "Applying Home Manager config for profile '${HM_PROFILE}' (user: $USER)..."
-  nix run nixpkgs#home-manager -- switch \
-    --flake "${FLAKE_DIR}#${HM_PROFILE}" \
-    --impure \
-    -b bak \
-    -v
-  info "Home Manager configuration applied."
+  info "Applying NixOS config with embedded Home Manager (user: $USER)..."
+  sudo env PERDEV_USER="${PERDEV_USER:-$USER}" \
+    nixos-rebuild switch --flake "${FLAKE_DIR}#nixos" --impure
+  info "NixOS configuration applied."
 fi
 
 # ── Step 4: Register nushell as a valid login shell ───────────────────────────
 NU_BIN="$(command -v nu 2>/dev/null || true)"
 if [[ -n "$NU_BIN" ]]; then
-  if ! grep -qF "$NU_BIN" /etc/shells; then
+  if [[ "$IS_MAC" == "true" ]] && ! grep -qF "$NU_BIN" /etc/shells; then
     info "Registering $NU_BIN in /etc/shells (sudo required)..."
     echo "$NU_BIN" | sudo tee -a /etc/shells >/dev/null
   fi
   info "Nushell: $NU_BIN"
-  info "Ghostty is configured to open nushell directly (programs.ghostty.settings.command)."
+  [[ "$IS_MAC" == "true" ]] \
+    && info "Ghostty is configured to open nushell directly."
   info "Interactive bash sessions auto-switch to nushell (programs.bash.initExtra)."
 else
   warn "nu not found in PATH — check home.nix packages."
@@ -104,17 +103,7 @@ if command -v rustup &>/dev/null; then
   fi
 fi
 
-# ── Step 6: Ghostty terminfo ──────────────────────────────────────────────────
-# xterm-ghostty terminfo ships with the ghostty Nix package into
-# ~/.nix-profile/share/terminfo/. TERMINFO_DIRS (set in home.sessionVariables)
-# points there so SSH sessions from Ghostty find it without extra steps.
-if [[ -f "${HOME}/.nix-profile/share/terminfo/x/xterm-ghostty" ]]; then
-  info "Ghostty terminfo present (SSH from Ghostty will work)."
-else
-  warn "xterm-ghostty terminfo not found — Home Manager step may not have run yet"
-fi
-
-# ── Step 7: Commit flake.lock ─────────────────────────────────────────────────
+# ── Step 6: Commit flake.lock ─────────────────────────────────────────────────
 if [[ -f "${FLAKE_DIR}/flake.lock" ]] && command -v git &>/dev/null; then
   if git -C "${FLAKE_DIR}" status --porcelain flake.lock 2>/dev/null | grep -q .; then
     warn "flake.lock was generated/updated. Commit it to pin package versions:"
@@ -135,9 +124,7 @@ if [[ "$IS_MAC" == "true" ]]; then
   info "  To apply macOS system defaults (Dock, Finder, Touch ID sudo, Homebrew):"
   info "    sudo darwin-rebuild switch --flake ${FLAKE_DIR}#mac --impure"
 else
-  info "Ubuntu next steps (run in a new terminal):"
-  info "  1. bash ${FLAKE_DIR}/scripts/docker-setup.sh      — install Docker CE"
-  info "  2. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh    — Claude Code, Gemini CLI, Antigravity CLI, Copilot"
-  info "  3. ollama pull llama3.2                    — download a local LLM model"
-  info "  4. Open Ghostty — it will launch nushell automatically"
+  info "NixOS next steps (run in a new terminal):"
+  info "  1. bash ${FLAKE_DIR}/scripts/ai-tools-setup.sh — verify AI tools and wire RTK"
+  info "  2. ollama pull llama3.2                       — download a local LLM model"
 fi

@@ -1,33 +1,32 @@
 # perdev
 
-Reproducible development workstation provisioning for **Linux** and **macOS**, built on [Nix](https://nixos.org/) + [Home Manager](https://github.com/nix-community/home-manager) + [nix-darwin](https://github.com/nix-darwin/nix-darwin).
+Reproducible personal development environment for x86_64 NixOS and Apple Silicon
+macOS, built with Nix, Home Manager, and nix-darwin.
 
-**Package management by platform:**
-- **macOS** — packages installed via [Homebrew](https://brew.sh/) (managed declaratively in `darwin.nix`); Home Manager handles shell/program configuration only.
-- **Linux** — packages installed via Nix (Home Manager `home.packages`).
+| Platform | Package installation | User configuration |
+|---|---|---|
+| NixOS | NixOS modules and Nix packages | NixOS + Home Manager |
+| macOS | Homebrew packages declared in `darwin.nix`, plus selected Nix packages | nix-darwin + Home Manager |
 
-Declare tools once in `home.nix`, bootstrap any new machine with one command, and get an identical environment every time — pinned versions via `flake.lock`.
+`flake.lock` pins the Nix inputs so the same configuration can be reproduced on
+another machine.
 
----
+## Install
 
-## Quick start
-
-### One-line install
+Requires `git`, `curl`, and either an existing NixOS installation or Apple
+Silicon macOS. On NixOS, the profile imports
+`/etc/nixos/hardware-configuration.nix` and targets UEFI with systemd-boot. On
+macOS, run `xcode-select --install` first if Git is unavailable.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh | bash
 ```
 
-> **Requires:** `git` and `curl` pre-installed. On macOS run `xcode-select --install` if git is missing.
+This clones the repository to `~/.local/share/perdev`, installs Nix when
+needed, and applies the appropriate platform configuration. Open a new shell
+after installation.
 
-This downloads and runs `perdev-update`, which:
-1. Clones the repo to `~/.local/share/perdev`
-2. Installs Nix (Determinate Systems installer) if not present
-3. Applies the full Home Manager (+ nix-darwin on macOS) configuration
-
-After it completes, open a **new shell** — all tools are ready.
-
-### Or clone and run directly
+To install from a working copy instead:
 
 ```bash
 git clone https://github.com/innobead/perdev.git ~/perdev
@@ -35,222 +34,129 @@ cd ~/perdev
 bash setup.sh
 ```
 
----
+## Tool highlights
 
-## What's included
+- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv
+- **Languages:** Go, Rust via rustup, Python with uv, JavaScript with Bun
+- **Containers:** Docker, Colima on macOS, Podman/Buildah/Skopeo on NixOS,
+  Apple Container on macOS, Dive, Crane, Cosign, Trivy, Lazydocker
+- **Kubernetes:** kubectl, Helm, Kind, K9s, kubectx, Kustomize, Stern,
+  Kubeseal, Flux, Tilt
+- **Cloud and issue tracking:** AWS CLI, Google Cloud CLI on macOS, Jira CLI,
+  `bzr` for Bugzilla
+- **AI:** Claude Code, Gemini CLI, GitHub Copilot CLI, Ollama, LLM, RTK,
+  Antigravity
+- **Utilities:** Neovim, Lazygit, ripgrep, fd, fzf, bat, eza, delta, jq, yq,
+  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats on macOS
 
-### Shell & terminal
-| Tool | Purpose |
+Bash remains the login shell for compatibility and automatically enters
+Nushell for interactive sessions. Ghostty launches Nushell directly. Ollama
+starts as a user service through systemd on NixOS and launchd on macOS.
+
+## Manage the environment
+
+`perdev-update` is installed to `~/.local/bin`:
+
+| Command | Action |
 |---|---|
-| [Ghostty](https://ghostty.org/) | Terminal emulator — launches Nushell directly |
-| [Nushell](https://www.nushell.sh/) | Primary shell (Bash stays as login shell) |
-| [Starship](https://starship.rs/) | Cross-shell prompt |
-| [Carapace](https://carapace.sh/) | Universal tab completion engine |
-| [Zoxide](https://github.com/ajeetdsouza/zoxide) | Smart `cd` with frecency ranking |
-| [Atuin](https://atuin.sh/) | Shell history with SQLite backend |
+| `perdev-update` | Pull the latest configuration and apply it |
+| `perdev-update --reinstall` | Remove and reinstall the environment |
+| `perdev-update --self-update` | Update the management script |
+| `perdev-update --local-update` | Update `flake.lock` and apply it |
+| `perdev-update --generations` | List system generations |
+| `perdev-update --diff [N]` | Compare a generation with the current one |
+| `perdev-update --rollback [N]` | Roll back to a previous generation |
 
-### Development toolchains
-| Language | Tools |
+When working in the repository, use `just`:
+
+| Command | Action |
 |---|---|
-| Go | `go`, `gopls`, `golangci-lint`, `delve` |
-| Rust | `rustup` (manages stable/nightly toolchains) |
-| Python | `python3`, `uv` |
-| JavaScript | `bun` (runtime + package manager) |
+| `just install` | Install, or update an existing installation |
+| `just apply` | Apply local configuration changes |
+| `just update` | Pull the remote configuration and apply it |
+| `just local-update` | Update Nix inputs and apply local configuration |
+| `just uninstall` | Remove macOS-managed components; explain NixOS removal |
+| `just test-mac` | Validate macOS provisioning |
+| `just test-nixos` | Build the NixOS system without activating it |
 
-### Containers & OCI
-| Tool | Ubuntu | macOS |
-|---|---|---|
-| Docker daemon | Docker CE via apt | [Colima](https://github.com/abiosoft/colima) (Apple VZ backend) |
-| Docker CLI | via Docker CE | `docker-client`, `docker-buildx`, `docker-compose` |
-| Native containers | `podman`, `buildah`, `skopeo` | [Apple Container](https://github.com/apple/container) (`container` CLI) |
-| Image tools | `dive`, `crane`, `cosign`, `trivy`, `lazydocker` | same |
+Every switch creates a system generation. Use `just rollback` after a bad
+update and let the configured weekly Nix garbage collection remove generations
+older than 30 days.
 
-### Kubernetes
-`kubectl` · `helm` · `kind` · `k9s` · `kubectx`/`kubens` · `kustomize` · `stern` · `kubeseal` · `flux` · `tilt`
+## Package ownership
 
-### Cloud & issue tracking
-`aws` · `gcloud` (macOS) · `jira` · `bzr` (Bugzilla CLI)
+On macOS, add formulae or casks to `darwin.nix`. Home Manager still installs
+Nushell, Starship, Carapace, Zoxide, and Atuin through Nix because it uses
+those packages to generate shell integrations. Avoid installing duplicate
+Homebrew copies because `/opt/homebrew/bin` takes PATH precedence.
 
-### AI development tools
-| Tool | macOS source | Linux source | Purpose |
-|---|---|---|---|
-| [Claude Code](https://claude.ai/code) | `brew` cask | Nix | Anthropic's agentic coding CLI |
-| [Gemini CLI](https://github.com/google-gemini/gemini-cli) | `brew` | Nix | Google Gemini CLI |
-| [Antigravity CLI](https://antigravity.google) | `brew` (mac-only) | — | Official Google Antigravity CLI |
-| [GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli) | `brew` cask | `gh` extension | Copilot in terminal |
-| [Ollama](https://ollama.com/) | `brew` | Nix | Local LLM server (Llama, Mistral, Gemma, …) |
-| [LLM](https://llm.datasette.io/) | `brew` | Nix | Universal LLM CLI with plugin support |
-| [RTK](https://github.com/rtk-ai/rtk) | `brew` | Nix | CLI output filter — strips noise before it hits the LLM (60–90% savings) |
+On NixOS, add user packages to `home.packages` in `home.nix` and system
+services or operating-system settings to `nixos.nix`. Apply changes with
+`just apply`; use `just local-update` only when intentionally updating pinned
+Nix inputs.
 
-### CLI utilities
-`vhs` · `ripgrep` · `fd` · `fzf` · `bat` · `eza` · `delta` · `jq` · `yq` · `just` · `age` · `sops` · `mkcert` · `httpie` · `curlie` · `grpcurl` · `htop` · `dust` · `procs` · `neovim` · `lazygit` · `tmux` · `direnv` · `gh`
+Notable exceptions:
 
-On macOS, [Stats](https://github.com/exelban/stats) provides menu-bar system monitoring.
-
----
-
-## Token cost optimization
-
-Two levers cut Claude Code API costs significantly:
-
-| Layer | Tool | Mechanism | Savings |
-|---|---|---|---|
-| CLI output | **RTK** | Strips progress bars, passing tests, verbose logs before they enter the context window | 60–90% on noisy commands |
-| Session effort | **`/effort`** | Lower effort level reduces thinking-token budget for simple tasks | variable |
-
-RTK is wired up automatically via a Claude Code hook (`rtk init -g`, run by `scripts/ai-tools-setup.sh`). All Bash tool calls are transparently rewritten through `rtk` to filter noise before it hits the LLM.
-
----
+- Docker is enabled declaratively through `virtualisation.docker` on NixOS.
+- Apple Container is installed through Nix on macOS.
+- The NixOS `bzr` package is pinned in `packages/bzr.nix`; macOS uses the
+  upstream `randomparity/tap`.
+- Homebrew cleanup is disabled, so applying the configuration does not remove
+  packages installed outside this project.
 
 ## Repository layout
 
-```
-perdev/
-├── flake.nix              # Nix flake — defines ubuntu and mac profiles
-├── flake.lock             # Pinned package versions
-├── home.nix               # Home Manager config — shell/program configs (packages on Linux only)
-├── darwin.nix             # nix-darwin config — Homebrew package list for macOS
-├── setup.sh               # Full setup entrypoint (all steps)
-├── uninstall.sh           # Remove everything installed by perdev
-├── perdev-update.sh       # Installed to ~/.local/bin/perdev-update; bootstrap entry point
-├── justfile               # Developer command aliases (just <recipe>)
-├── configs/
-│   ├── nushell/
-│   │   ├── env.nu         # PATH, env vars
-│   │   └── config.nu      # Settings, aliases, direnv hook
-│   └── ghostty/
-│       └── config         # Reference config docs
-├── scripts/
-│   ├── install.sh         # Minimal Nix + HM bootstrap (used by setup.sh)
-│   ├── docker-setup.sh    # Ubuntu: Docker CE via apt
-│   ├── docker-mac-setup.sh# macOS: start Colima, verify Apple Container
-│   └── ai-tools-setup.sh  # Verify AI tools on PATH and wire RTK hook
-└── tests/
-    ├── test-ubuntu.sh     # Ubuntu container validation
-    └── test-mac.sh        # macOS direct validation
+```text
+flake.nix              Nix flake and platform profiles
+flake.lock             Pinned Nix inputs
+home.nix               Home Manager configuration and NixOS user packages
+nixos.nix              NixOS system, boot, user, network, and Docker settings
+darwin.nix             macOS system configuration and Homebrew packages
+packages/              Custom Nix packages
+configs/               Nushell and Ghostty configuration
+setup.sh               Full installation entry point
+perdev-update.sh       Install and update lifecycle command
+uninstall.sh           Environment removal
+scripts/               Minimal bootstrap and platform setup helpers
+tests/                 NixOS and macOS provisioning checks
+.github/workflows/     PR checks and automated flake updates
 ```
 
----
+## Platform notes
 
-## Managing your environment
+### NixOS
 
-### `perdev-update` — the main tool
+- The profile targets x86_64 UEFI workstations using systemd-boot.
+- The host-generated `/etc/nixos/hardware-configuration.nix` supplies detected
+  filesystems and hardware modules.
+- The profile is headless. NetworkManager, Docker, Nix garbage collection, and
+  the user account are managed by `nixos.nix`.
+- `PERDEV_USER` can override the configured username; otherwise evaluation uses
+  `SUDO_USER`, then `USER`.
 
-After install, `perdev-update` is on your PATH. It manages the full lifecycle:
+### macOS
+
+- `darwin-rebuild` applies `darwin.nix` and the embedded Home Manager
+  configuration together.
+- Colima provides the Docker-compatible daemon using Apple's virtualization
+  framework.
+- The Nushell configuration generated under `~/.config` is linked to the
+  macOS application-support location.
+- Apple Container and its CI validation require macOS 26.
+
+## Development
+
+Provisioning tests are non-destructive:
 
 ```bash
-perdev-update                 # upgrade: pull latest config + reapply
-perdev-update --reinstall     # wipe and reinstall from scratch
-perdev-update --self-update   # replace this script with the latest from GitHub
-perdev-update --local-update  # bump all Nix packages to latest versions
-perdev-update --rollback      # roll back to the previous generation
-perdev-update --rollback 42   # roll back to a specific generation number
-perdev-update --diff          # show what changed in the last switch
-perdev-update --diff 42       # diff generation 42 against current
-perdev-update --generations   # list all Home Manager generations
-```
-
-### `just` — developer shortcuts
-
-If you have the repository cloned locally, `just` provides shortcuts:
-
-```bash
-just install          # smart install/upgrade (or: just install force=true to reinstall)
-just update           # pull latest config from git + reapply
-just apply            # apply local changes without git pull or flake update (macOS: sudo darwin-rebuild)
-just local-update     # nix flake update + reapply (bumps package pins)
-just uninstall        # remove everything
-just rollback         # roll back to previous generation
-just rollback 42      # roll back to generation 42
-just diff             # show changes since last switch
-just diff 42          # diff generation 42 against current
-just generations      # list all generations
-just test-mac         # run macOS provisioning tests
-just test-ubuntu      # run Ubuntu provisioning tests (Docker required)
-```
-
-### Adding or removing a package
-
-**macOS** — edit `homebrew.brews` or `homebrew.casks` in `darwin.nix`, then run:
-
-```bash
-just apply   # sudo darwin-rebuild switch --flake .#mac --impure
-```
-
-**Linux** — edit `home.packages` in `home.nix`, then run:
-
-```bash
-perdev-update --local-update   # apply immediately from local repo
-# or
-just local-update
-```
-
-### Generations & rollbacks
-
-Every `switch` creates a new Home Manager generation — a complete, atomic snapshot of your environment. Roll back instantly if something breaks:
-
-```bash
-perdev-update --generations    # list all generations
-perdev-update --rollback       # revert to previous
-perdev-update --rollback 42    # revert to a specific generation
-```
-
-To free up disk space from old generations:
-
-```bash
-nix-collect-garbage -d
-```
-
----
-
-## Platform details
-
-### Ubuntu
-
-- **Ghostty** uses `pkgs.ghostty` directly. On Mesa/Intel GPUs this works without extra setup. For NVIDIA, install [nixGL](https://github.com/nix-community/nixGL) separately and wrap the binary manually.
-- **Docker** is installed via the official apt repository (`scripts/docker-setup.sh`) — `pkgs.docker` from Nix does not integrate with Ubuntu's systemd correctly.
-- **Nushell** is set as the terminal shell via `programs.ghostty.settings.command`. Bash stays as the login shell for compatibility.
-- **Ollama** runs as a `systemd` user service and starts automatically on login.
-
-### macOS (Apple Silicon)
-
-- **nix-darwin** manages Homebrew declaratively via `darwin.nix` and runs Home Manager as a sub-activation via `darwin-rebuild switch` (requires `sudo`).
-- **Package split**: CLI tools and GUI apps are installed via Homebrew. Shell-integration tools (`nushell`, `starship`, `carapace`, `zoxide`, `atuin`) are Nix-managed via `programs.*` in `home.nix` — they must be Nix packages because Home Manager uses them at build time to generate nushell init scripts.
-- **Homebrew cleanup** is set to `none` — `darwin-rebuild` only ensures listed packages are installed, never removes packages you've installed yourself.
-- **Nushell config**: on macOS, nushell reads from `~/Library/Application Support/nushell/`. Home Manager generates configs to `~/.config/nushell/`. A `home.activation` step automatically symlinks the macOS path to the HM-managed location.
-- **Ghostty** is installed as a Homebrew cask (`ghostty`).
-- **Docker** runs inside a [Colima](https://github.com/abiosoft/colima) VM (Apple VZ backend). `docker` CLI commands work normally against Colima's socket.
-- **Apple Container** (`container` CLI) is Apple's native OCI tool — installed via Nix (not available in Homebrew), requires Apple Silicon.
-- **Ollama** runs as a `launchd` user agent and starts automatically on login.
-
----
-
-## Testing
-
-### macOS (runs directly — no macOS containers exist)
-
-```bash
+just test-nixos
 just test-mac
 ```
 
-Non-destructive: uses `nix build --no-link` and `nix shell` — does not switch your active Home Manager generation. Validates the HM config, the nix-darwin config, and spot-checks 40+ binaries.
+Pull requests run both checks in GitHub Actions. A weekly workflow updates
+`flake.lock`, opens a PR, runs the same checks, and merges only the tested
+commit after both platforms pass.
 
-### Ubuntu (in Docker)
-
-```bash
-just test-ubuntu
-```
-
-Spins up a fresh Ubuntu container, installs Nix with `--init none` (no systemd needed), builds the full Home Manager activation package, then spot-checks 40+ binaries.
-
----
-
-## Notes
-
-- **Rust**: only `rustup` is installed via Nix. Do not add `pkgs.cargo` or `pkgs.rustc` alongside it — they conflict. Use `rustup toolchain install stable` to get the compiler.
-- **JavaScript**: `bun` is the runtime and package manager. Global packages land in `~/.bun/bin`.
-- **`stateVersion`**: `home.stateVersion` does not need to match the nixpkgs channel. Do not change it unless Home Manager's migration guide instructs you to.
-- **Git identity not required**: `perdev-update` syncs the repo with `git reset --hard origin/main` — no merge commits are created, so no `user.email`/`user.name` git config is needed on fresh installs.
-- **Direnv in nushell**: the direnv hook uses `which direnv` (PATH lookup) rather than a hardcoded Nix store path. This means it survives `nix-collect-garbage` and flake updates without breaking the shell.
-- **`--self-update` writes to `~/.local/bin/perdev-update`**: Home Manager installs the script as a symlink into the read-only Nix store. `--self-update` always writes to the install path directly, replacing the symlink with a real file containing the latest version.
-- **Pinned versions**: `flake.lock` pins every package to a specific version. `perdev-update --local-update` (or `just local-update`) updates the pins to latest.
+Keep Rust managed exclusively by rustup; adding Nix `cargo` or `rustc`
+packages alongside it creates toolchain conflicts. Change
+`home.stateVersion` only when required by the Home Manager migration guide.

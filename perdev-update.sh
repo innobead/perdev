@@ -6,7 +6,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh | bash
 #
 # Behaviour when run with no flags:
-#   - If Home Manager is not yet active: runs a full install (setup.sh)
+#   - If perdev is not yet active: runs a full install (setup.sh)
 #   - If already installed: pulls latest config from git and reapplies
 
 set -euo pipefail
@@ -29,7 +29,7 @@ Options:
     --local-update     Update flake.lock to latest packages and reapply (no git pull)
     --rollback [N]     Roll back to generation N (default: previous generation)
     --diff [N]         Show package changes vs generation N (default: previous)
-    --generations      List all Home Manager generations
+    --generations      List all system generations
     -h, --help         Show this help message
 
 Examples:
@@ -66,33 +66,67 @@ done
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 _is_installed() {
-  home-manager generations 2>/dev/null | grep -q .
+  [[ -x "${HOME}/.local/bin/perdev-update" ]]
 }
 
 _detect_profile() {
-  [[ "$(uname -s)" == "Darwin" ]] && echo "mac" || echo "ubuntu"
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "mac"
+  elif [[ -e /etc/NIXOS ]]; then
+    echo "nixos"
+  else
+    error "Unsupported platform: perdev supports NixOS and macOS only."
+    return 1
+  fi
 }
 
-_profile_dir() {
-  local d="$HOME/.local/state/nix/profiles"
-  [[ -d "$d" ]] || d="/nix/var/nix/profiles/per-user/$USER"
-  echo "$d"
+_darwin_rebuild() {
+  local dr="/run/current-system/sw/bin/darwin-rebuild"
+  if [[ -x "$dr" ]]; then
+    sudo "$dr" "$@"
+  else
+    sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- "$@"
+  fi
 }
 
 _switch() {
   local profile; profile=$(_detect_profile)
   if [[ "$profile" == "mac" ]]; then
-    # Use installed darwin-rebuild (handles HOME correctly); fall back to nix run on first install.
-    local dr="/run/current-system/sw/bin/darwin-rebuild"
-    if [[ -x "$dr" ]]; then
-      sudo "$dr" switch --flake ".#${profile}" --impure -v
-    else
-      sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- switch --flake ".#${profile}" --impure -v
-    fi
+    _darwin_rebuild switch --flake ".#${profile}" --impure -v
     info "Configuration applied successfully."
   else
-    nix run nixpkgs#home-manager -- switch --flake ".#${profile}" --impure -v
+    sudo env PERDEV_USER="${PERDEV_USER:-$USER}" \
+      nixos-rebuild switch --flake ".#nixos" --impure
+    info "Configuration applied successfully."
   fi
+}
+
+_system_current_generation() {
+  local target
+  target=$(readlink /nix/var/nix/profiles/system)
+  [[ "$target" =~ system-([0-9]+)-link$ ]] || {
+    error "Could not determine the current system generation."
+    return 1
+  }
+  echo "${BASH_REMATCH[1]}"
+}
+
+_system_previous_generation() {
+  local current candidate
+  current=$(_system_current_generation)
+  while IFS= read -r candidate; do
+    if (( candidate < current )); then
+      echo "$candidate"
+      return 0
+    fi
+  done < <(
+    find /nix/var/nix/profiles -maxdepth 1 -type l -name 'system-*-link' \
+      -exec basename {} \; \
+      | sed -E 's/system-([0-9]+)-link/\1/' \
+      | sort -rn
+  )
+  error "No previous system generation found."
+  return 1
 }
 
 _clone_or_update_repo() {
@@ -170,34 +204,46 @@ case "$MODE" in
     ;;
 
   rollback)
-    if [[ -n "$GEN_ARG" ]]; then
-      info "Rolling back to generation ${GEN_ARG}..."
-      pdir=$(_profile_dir)
-      link="$pdir/home-manager-${GEN_ARG}-link"
+    profile=$(_detect_profile)
+    if [[ "$profile" == "nixos" ]]; then
+      if [[ -n "$GEN_ARG" ]]; then
+        link="/nix/var/nix/profiles/system-${GEN_ARG}-link"
+        if [[ ! -L "$link" ]]; then
+          error "NixOS generation ${GEN_ARG} not found."
+          exit 1
+        fi
+        info "Switching to NixOS generation ${GEN_ARG}..."
+        sudo nix-env --profile /nix/var/nix/profiles/system \
+          --switch-generation "$GEN_ARG"
+        sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+      else
+        info "Rolling back to the previous NixOS generation..."
+        sudo nixos-rebuild switch --rollback
+      fi
+    elif [[ -n "$GEN_ARG" ]]; then
+      link="/nix/var/nix/profiles/system-${GEN_ARG}-link"
       if [[ ! -L "$link" ]]; then
-        error "Generation ${GEN_ARG} not found in ${pdir}"
+        error "macOS system generation ${GEN_ARG} not found."
         exit 1
       fi
-      "$link/activate"
+      info "Switching to macOS system generation ${GEN_ARG}..."
+      _darwin_rebuild switch --switch-generation "$GEN_ARG"
     else
-      info "Rolling back to previous generation..."
-      home-manager switch --rollback
+      info "Rolling back to the previous macOS system generation..."
+      _darwin_rebuild switch --rollback
     fi
     ;;
 
   diff)
-    pdir=$(_profile_dir)
-    current_link="$pdir/home-manager"
-    if [[ -n "$GEN_ARG" ]]; then
-      target_link="$pdir/home-manager-${GEN_ARG}-link"
+    profile=$(_detect_profile)
+    if [[ "$profile" == "nixos" ]]; then
+      current_link="/run/current-system"
+      generation="${GEN_ARG:-$(_system_previous_generation)}"
+      target_link="/nix/var/nix/profiles/system-${generation}-link"
     else
-      current_num=$(home-manager generations | head -1 | grep -o '[0-9]\+' | tail -1)
-      prev=$((current_num - 1))
-      if [[ "$prev" -lt 1 ]]; then
-        warn "No previous generation found."
-        exit 0
-      fi
-      target_link="$pdir/home-manager-${prev}-link"
+      current_link="/run/current-system"
+      generation="${GEN_ARG:-$(_system_previous_generation)}"
+      target_link="/nix/var/nix/profiles/system-${generation}-link"
     fi
     if [[ ! -L "$target_link" ]]; then
       error "Generation link not found: ${target_link}"
@@ -207,8 +253,12 @@ case "$MODE" in
     ;;
 
   generations)
-    home-manager generations
+    profile=$(_detect_profile)
+    if [[ "$profile" == "nixos" ]]; then
+      sudo nixos-rebuild list-generations
+    else
+      _darwin_rebuild --list-generations
+    fi
     ;;
 
 esac
-

@@ -1,5 +1,5 @@
 {
-  description = "Ubuntu + macOS home environment — Nix + Home Manager + nix-darwin";
+  description = "NixOS + macOS development environment";
 
   inputs = {
     # nixpkgs-unstable: avoids carapace+nushell bug in nixos-25.05 (HM issue #7517)
@@ -22,15 +22,45 @@
       linuxPkgs  = import nixpkgs { system = "x86_64-linux";  config.allowUnfree = true; };
       darwinPkgs = import nixpkgs { system = "aarch64-darwin"; config.allowUnfree = true; };
       linuxBzr   = linuxPkgs.callPackage ./packages/bzr.nix {};
+      username =
+        let
+          configuredUser = builtins.getEnv "PERDEV_USER";
+          sudoUser = builtins.getEnv "SUDO_USER";
+          currentUser = builtins.getEnv "USER";
+        in
+          if configuredUser != "" then configuredUser
+          else if sudoUser != "" then sudoUser
+          else if currentUser != "" && currentUser != "root" then currentUser
+          else "perdev";
     in {
       packages.x86_64-linux.bzr = linuxBzr;
 
-      # ── Ubuntu / Linux profile ─────────────────────────────────────────────
-      # Run: home-manager switch --flake .#ubuntu --impure
-      homeConfigurations."ubuntu" = home-manager.lib.homeManagerConfiguration {
-        pkgs = linuxPkgs;
-        extraSpecialArgs = { isDarwin = false; bzr = linuxBzr; };
-        modules = [ ./home.nix ];
+      # ── NixOS / x86_64 profile ─────────────────────────────────────────────
+      # Run: sudo nixos-rebuild switch --flake .#nixos --impure
+      nixosConfigurations."nixos" = nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        specialArgs = { inherit username; bzr = linuxBzr; };
+        modules = [
+          { nixpkgs.config.allowUnfree = true; }
+          ./nixos.nix
+          home-manager.nixosModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = false;
+              backupFileExtension = "bak";
+              extraSpecialArgs = {
+                isDarwin = false;
+                bzr = linuxBzr;
+              };
+              users.${username} = { lib, ... }: {
+                imports = [ ./home.nix ];
+                home.username = lib.mkForce username;
+                home.homeDirectory = lib.mkForce "/home/${username}";
+              };
+            };
+          }
+        ];
       };
 
       # ── macOS / Apple Silicon profile ─────────────────────────────────────
@@ -40,11 +70,8 @@
       # with Home Manager as a nix-darwin module for user-level config.
       darwinConfigurations."mac" =
         let
-          # Prefer SUDO_USER (set by sudo) so darwin-rebuild works correctly
-          # when invoked with `sudo` — USER would otherwise be "root".
-          username =
-            let sudoUser = builtins.getEnv "SUDO_USER";
-            in if sudoUser != "" then sudoUser else builtins.getEnv "USER";
+          # The shared username resolver prefers PERDEV_USER, then SUDO_USER.
+          inherit username;
         in
         nix-darwin.lib.darwinSystem {
           system = "aarch64-darwin";

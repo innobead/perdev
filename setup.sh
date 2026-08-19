@@ -7,13 +7,12 @@
 #
 # Usage:
 #   bash setup.sh          # first run or re-run to retry failed steps
-#   nix run .#setup        # after Nix is installed (re-runs only)
 #
 # Steps:
-#   1. Nix          — Determinate Systems installer
-#   2. Home Manager — nix run nixpkgs#home-manager switch (all packages + AI tools via Nix)
+#   1. Nix          — built into NixOS; Determinate Systems installer on macOS
+#   2. System       — nixos-rebuild or darwin-rebuild with embedded Home Manager
 #   3. Rust         — rustup toolchain install stable
-#   4. Docker       — Docker CE (Ubuntu) or Colima start (macOS)
+#   4. Docker       — NixOS service or Colima on macOS
 #   5. AI tools     — verify Nix-managed tools, wire RTK hook, check gh copilot
 
 # Do NOT use set -e — steps are independent; failures are tracked manually.
@@ -22,9 +21,12 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  IS_MAC=true; HM_PROFILE="mac"
+  IS_MAC=true; PROFILE="mac"
+elif [[ -e /etc/NIXOS ]]; then
+  IS_MAC=false; PROFILE="nixos"
 else
-  IS_MAC=false; HM_PROFILE="ubuntu"
+  echo "Unsupported platform: perdev supports NixOS and macOS only." >&2
+  exit 1
 fi
 
 # ── Colour helpers ────────────────────────────────────────────────────────────
@@ -48,6 +50,7 @@ _step_result() {  # status label [detail]
 pass() { _step_result PASS "$@"; }
 skip() { _step_result SKIP "$@"; }
 fail() { _step_result FAIL "$@"; }
+warn() { echo -e "${Y}!${N} $1${2:+ — $2}"; }
 
 section() {
   echo ""
@@ -76,13 +79,15 @@ source_hm() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-echo -e "${B}perdev setup — $(uname -s) / ${HM_PROFILE}${N}"
+echo -e "${B}perdev setup — $(uname -s) / ${PROFILE}${N}"
 echo "Repo: $REPO_DIR"
 
 # ══ Step 1: Nix ══════════════════════════════════════════════════════════════
 section "1/6  Nix"
 source_nix
-if command -v nix &>/dev/null; then
+if ! $IS_MAC; then
+  skip "Nix" "provided by NixOS — $(nix --version)"
+elif command -v nix &>/dev/null; then
   skip "Nix" "already installed — $(nix --version)"
 else
   echo "Installing Nix via Determinate Systems installer..."
@@ -118,7 +123,7 @@ if $IS_MAC; then
   eval "$(/opt/homebrew/bin/brew shellenv)" 2>/dev/null || eval "$(/usr/local/bin/brew shellenv)" 2>/dev/null || true
 fi
 
-# ══ Step 2: nix-darwin (macOS) or Home Manager (Linux) ═══════════════════════
+# ══ Step 2: nix-darwin or NixOS, both with Home Manager ══════════════════════
 if $IS_MAC; then
   section "2/6  nix-darwin + Home Manager — darwin-rebuild"
   echo "Profile: mac  (darwin.nix manages Homebrew packages; home.nix manages shell configs)"
@@ -148,18 +153,16 @@ if $IS_MAC; then
     fi
   fi
 else
-  section "2/6  Home Manager — nix run"
-  echo "Profile: ${HM_PROFILE}  (applies home.nix — installs all packages)"
-  if nix run nixpkgs#home-manager -- switch \
-       --flake "${REPO_DIR}#${HM_PROFILE}" \
-       --impure \
-       -b bak \
-       -v; then
+  section "2/6  NixOS + Home Manager — nixos-rebuild"
+  echo "Profile: nixos  (nixos.nix manages the system; home.nix manages the user)"
+  if sudo env PERDEV_USER="${PERDEV_USER:-$USER}" nixos-rebuild switch \
+       --flake "${REPO_DIR}#nixos" \
+       --impure; then
     source_hm
-    pass "Home Manager"
+    pass "NixOS + Home Manager"
   else
-    fail "Home Manager" "switch failed — packages may be partially installed"
-    source_hm  # source whatever was applied before the failure
+    fail "NixOS" "switch failed — the previous generation remains active"
+    source_hm
   fi
 fi
 
@@ -199,18 +202,11 @@ if $IS_MAC; then
     fi
   fi
 else
-  # Ubuntu: Docker CE via official apt repo
-  # Check for dockerd (the daemon), not just the CLI — Nix provides a docker
-  # CLI-only package which would cause a false-positive here.
-  if command -v dockerd &>/dev/null && dpkg -l docker-ce 2>/dev/null | grep -q '^ii'; then
-    skip "Docker CE" "already installed — $(docker --version)"
+  # NixOS: virtualisation.docker in nixos.nix owns the daemon and service.
+  if systemctl is-active --quiet docker; then
+    pass "Docker" "NixOS service active — $(docker --version)"
   else
-    echo "Installing Docker CE via apt..."
-    if bash "${REPO_DIR}/scripts/docker-setup.sh"; then
-      pass "Docker CE"
-    else
-      fail "Docker CE" "installation failed — run: bash scripts/docker-setup.sh"
-    fi
+    fail "Docker" "NixOS service is not active after rebuild"
   fi
 fi
 
@@ -218,7 +214,7 @@ fi
 section "5/6  AI tools"
 # On macOS: all AI tools (claude-code, gemini-cli, copilot-cli, antigravity,
 #           rtk, ollama, llm) are brew-managed via darwin.nix.
-# On Linux: all AI tools managed by Nix (home.nix).
+# On NixOS: all AI tools are managed by Nix through home.nix.
 # This step verifies availability and wires up hooks that need a running environment.
 
 _ai_ok=true
@@ -287,7 +283,7 @@ else
   echo -e "${G}All steps completed successfully.${N}"
   echo ""
   echo "Open a new shell (or run: source ~/.bashrc) to start using the environment."
-  echo "Ghostty will open Nushell automatically."
+  $IS_MAC && echo "Ghostty will open Nushell automatically."
   echo ""
   echo -e "${B}Next steps:${N}"
   echo "  Pull a local LLM model (after opening a new shell, ollama daemon starts automatically):"

@@ -16,7 +16,7 @@ install force="":
         echo "Force reinstall: removing existing installation..."
         bash uninstall.sh --force
         bash setup.sh
-    elif home-manager generations 2>/dev/null | grep -q .; then
+    elif [ -x "$HOME/.local/bin/perdev-update" ]; then
         echo "Already installed — upgrading..."
         just update
     else
@@ -39,8 +39,12 @@ apply:
         DR="/run/current-system/sw/bin/darwin-rebuild"
         [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"
         sudo $DR switch --flake ".#mac" --impure -v
+    elif [ -e /etc/NIXOS ]; then
+        sudo env PERDEV_USER="${PERDEV_USER:-$USER}" \
+            nixos-rebuild switch --flake ".#nixos" --impure
     else
-        nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
+        echo "Unsupported platform: perdev supports NixOS and macOS only." >&2
+        exit 1
     fi
 
 # Update flake.lock to latest package versions and reapply from current directory (local dev use)
@@ -52,8 +56,12 @@ local-update:
         DR="/run/current-system/sw/bin/darwin-rebuild"
         [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"
         sudo $DR switch --flake ".#mac" --impure -v
+    elif [ -e /etc/NIXOS ]; then
+        sudo env PERDEV_USER="${PERDEV_USER:-$USER}" \
+            nixos-rebuild switch --flake ".#nixos" --impure
     else
-        nix run nixpkgs#home-manager -- switch --flake ".#ubuntu" --impure -v
+        echo "Unsupported platform: perdev supports NixOS and macOS only." >&2
+        exit 1
     fi
 
 # Remove all components installed by perdev (prompts for confirmation)
@@ -62,7 +70,7 @@ uninstall:
 
 # ── Generations ───────────────────────────────────────────────────────────────
 
-# List all Home Manager generations
+# List all system generations
 generations:
     bash perdev-update.sh --generations
 
@@ -80,7 +88,6 @@ diff gen="":
 test-mac:
     bash tests/test-mac.sh
 
-# Run provisioning verification inside an Ubuntu Docker container
-test-ubuntu:
-    bash tests/test-ubuntu.sh
-
+# Build the NixOS system closure without activating it
+test-nixos:
+    bash tests/test-nixos.sh
