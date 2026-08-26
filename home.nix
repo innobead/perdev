@@ -1,5 +1,25 @@
 { pkgs, lib, config, isDarwin ? false, nixgl ? null, bzr ? null, ... }:
 
+let
+  atuinNushellConfig = pkgs.runCommand "atuin-nushell-config.nu" {
+    nativeBuildInputs = [ pkgs.atuin ];
+  } ''
+    export HOME="$TMPDIR"
+    atuin init nu > "$out"
+
+    awk '
+      /name: atuin/ {
+        bindings++
+        if (bindings == 2) {
+          sub(/name: atuin/, "name: atuin_up")
+        }
+      }
+      { print }
+      END { if (bindings != 2) exit 1 }
+    ' "$out" > "$TMPDIR/patched.nu"
+    mv "$TMPDIR/patched.nu" "$out"
+  '';
+in
 {
   # ── Identity ──────────────────────────────────────────────────────────────
   # builtins.getEnv requires --impure (handled in install.sh).
@@ -15,7 +35,10 @@
   programs.nushell = {
     enable      = true;
     extraEnv    = builtins.readFile ./configs/nushell/env.nu;
-    extraConfig = builtins.readFile ./configs/nushell/config.nu;
+    extraConfig = ''
+      source ${atuinNushellConfig}
+      ${builtins.readFile ./configs/nushell/config.nu}
+    '';
   };
 
   # ── Bash (stays as OS login shell; switches to nushell for interactive use) ─
@@ -64,11 +87,9 @@
   # Nix package needed to generate nushell init script at build time.
   programs.atuin = {
     enable                   = true;
-    enableNushellIntegration = true;
+    # The generated script is patched and sourced through programs.nushell.
+    enableNushellIntegration = false;
     enableBashIntegration    = true;
-    # Atuin gives its Ctrl-R and Up bindings the same Nushell name, which
-    # Nushell 0.114+ rejects as an invalid configuration.
-    flags = [ "--disable-up-arrow" ];
     settings = {
       auto_sync    = false;
       update_check = false;
