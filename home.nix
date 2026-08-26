@@ -66,6 +66,9 @@
     enable                   = true;
     enableNushellIntegration = true;
     enableBashIntegration    = true;
+    # Atuin gives its Ctrl-R and Up bindings the same Nushell name, which
+    # Nushell 0.114+ rejects as an invalid configuration.
+    flags = [ "--disable-up-arrow" ];
     settings = {
       auto_sync    = false;
       update_check = false;

@@ -14,6 +14,25 @@ $env.config.history.file_format  = "sqlite"
 $env.config.history.max_size     = 100_000
 $env.config.history.sync_on_enter = true
 
+# Atuin's generated Ctrl-R and Up bindings share the name "atuin". The
+# generated Up binding is disabled in home.nix and restored here with a unique
+# name so Nushell accepts the configuration without changing key behavior.
+$env.config.keybindings = (
+    $env.config.keybindings
+    | append {
+        name: atuin_up
+        modifier: none
+        keycode: up
+        mode: [emacs, vi_normal, vi_insert]
+        event: {
+            until: [
+                {send: menuup}
+                {send: executehostcommand cmd: (_atuin_search_cmd '--shell-up-key-binding')}
+            ]
+        }
+    }
+)
+
 # ── direnv hook ───────────────────────────────────────────────────────────────
 # direnv has no built-in nushell hook generator; this minimal hook fires on
 # every prompt render and loads env changes when .envrc is present.
