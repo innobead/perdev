@@ -1,5 +1,19 @@
 { lib, ... }:
 
+let
+  guiPath = [
+    "/opt/homebrew/bin"
+    "/opt/homebrew/sbin"
+    "/run/current-system/sw/bin"
+    "/nix/var/nix/profiles/default/bin"
+    "/usr/local/bin"
+    "/usr/bin"
+    "/bin"
+    "/usr/sbin"
+    "/sbin"
+  ];
+in
+
 # darwin.nix — macOS package management via nix-darwin + Homebrew.
 #
 # All CLI tools, dev toolchains, and GUI apps are installed declaratively
@@ -18,19 +32,12 @@
   # app child processes that exec zsh — including JetBrains terminal.
   environment.systemPath = [ "/opt/homebrew/bin" "/opt/homebrew/sbin" ];
 
-  # Finder/Dock apps do not run a shell, so expose stable tool paths through the
-  # user's launchd environment as well. This affects newly launched GUI apps.
-  launchd.user.envVariables.PATH = [
-    "/opt/homebrew/bin"
-    "/opt/homebrew/sbin"
-    "/run/current-system/sw/bin"
-    "/nix/var/nix/profiles/default/bin"
-    "/usr/local/bin"
-    "/usr/bin"
-    "/bin"
-    "/usr/sbin"
-    "/sbin"
-  ];
+  # Persist PATH for user launchd domains so Finder/Dock apps receive it from
+  # login. Runtime `launchctl setenv` is too late for LaunchServices children.
+  # macOS requires a reboot after this value changes.
+  system.activationScripts.postActivation.text = lib.mkAfter ''
+    /bin/launchctl config user path ${lib.escapeShellArg (lib.concatStringsSep ":" guiPath)}
+  '';
 
   # sudo resets $USER to root; $SUDO_USER holds the original invoking user.
   # Falls back to $USER when not using sudo (e.g. CI or first-time bootstrap).

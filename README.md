@@ -142,8 +142,8 @@ tests/                 NixOS and macOS provisioning checks
   framework.
 - The Nushell configuration generated under `~/.config` is linked to the
   macOS application-support location.
-- Stable Homebrew and Nix tool paths are exported through the user `launchd`
-  environment for applications opened from Finder or the Dock.
+- Stable Homebrew and Nix tool paths are persisted for user `launchd` domains
+  so applications opened from Finder or the Dock inherit them after a reboot.
 - Apple Container and its CI validation require macOS 26.
 
 ## Development
