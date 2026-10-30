@@ -27,16 +27,23 @@ Options:
     --reinstall        Uninstall then reinstall from scratch
     --self-update      Replace this script with the latest version from GitHub
     --local-update     Update flake.lock to latest packages and reapply (no git pull)
+    --brew-upgrade     macOS: upgrade Homebrew packages only (no Nix switch)
+    --no-brew          macOS: skip the Homebrew upgrade after an upgrade/local-update
     --rollback [N]     Roll back to generation N (default: previous generation)
     --diff [N]         Show package changes vs generation N (default: previous)
     --generations      List all system generations
     -h, --help         Show this help message
 
+On macOS, upgrade and --local-update also upgrade Homebrew formulae and casks
+and report Homebrew packages that are not declared in darwin.nix.
+
 Examples:
     perdev-update                 # install or upgrade
+    perdev-update --no-brew       # upgrade Nix configuration only
     perdev-update --reinstall     # wipe and reinstall
     perdev-update --self-update   # update this script to the latest version
     perdev-update --local-update  # bump all nix packages to latest
+    perdev-update --brew-upgrade  # upgrade Homebrew packages only
     perdev-update --rollback      # undo the last switch
     perdev-update --diff          # see what changed in the last switch
     perdev-update --generations   # list all generations
@@ -45,14 +52,17 @@ EOF
 
 # ── Argument parsing ──────────────────────────────────────────────────────────
 
-MODE="auto"       # auto | reinstall | self-update | local-update | rollback | diff | generations
+MODE="auto"       # auto | reinstall | self-update | local-update | brew-upgrade | rollback | diff | generations
 GEN_ARG=""
+BREW_UPGRADE=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --reinstall)      MODE="reinstall"; shift ;;
     --self-update)    MODE="self-update"; shift ;;
     --local-update)   MODE="local-update"; shift ;;
+    --brew-upgrade)   MODE="brew-upgrade"; shift ;;
+    --no-brew)        BREW_UPGRADE=false; shift ;;
     --rollback)       MODE="rollback"; shift
                       [[ $# -gt 0 && "$1" != --* ]] && { GEN_ARG="$1"; shift; } ;;
     --diff)           MODE="diff"; shift
@@ -99,6 +109,90 @@ _switch() {
       nixos-rebuild switch --flake ".#nixos" --impure
     info "Configuration applied successfully."
   fi
+}
+
+_brew_bin() {
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+  elif [[ -x /opt/homebrew/bin/brew ]]; then
+    echo /opt/homebrew/bin/brew
+  fi
+}
+
+# Warn about Homebrew packages installed on request but not declared in darwin.nix.
+_brew_report_unmanaged() {
+  local flake_dir="$1" brew="$2" jq_bin declared_brews declared_casks
+  jq_bin=$(command -v jq || true)
+  [[ -x "$jq_bin" ]] || jq_bin=/opt/homebrew/bin/jq
+  if [[ ! -x "$jq_bin" ]]; then
+    warn "jq not found — skipping unmanaged Homebrew package check."
+    return 0
+  fi
+
+  if ! declared_brews=$(nix eval --impure --raw "${flake_dir}#darwinConfigurations.mac.config.homebrew.brews" \
+        --apply 'bs: builtins.concatStringsSep " " (map (b: b.name) bs)' 2>/dev/null) ||
+     ! declared_casks=$(nix eval --impure --raw "${flake_dir}#darwinConfigurations.mac.config.homebrew.casks" \
+        --apply 'cs: builtins.concatStringsSep " " (map (c: c.name) cs)' 2>/dev/null); then
+    warn "Could not read Homebrew packages from darwin.nix — skipping unmanaged package check."
+    return 0
+  fi
+
+  # Resolve core aliases (e.g. kubectl → kubernetes-cli) to installed names.
+  # Tap formulae (owner/tap/name) are matched by their short name, as listed by
+  # `brew leaves`, so untrusted taps never need to be loaded.
+  local core_brews=() tap_brew_names=() b
+  local declared_formula_names declared_cask_names unmanaged_formulae unmanaged_casks
+  for b in $declared_brews; do
+    if [[ "$b" == */*/* ]]; then tap_brew_names+=("${b##*/}"); else core_brews+=("$b"); fi
+  done
+  declared_formula_names=$(
+    {
+      printf '%s\n' ${tap_brew_names[@]+"${tap_brew_names[@]}"}
+      "$brew" info --json=v2 --formula ${core_brews[@]+"${core_brews[@]}"} 2>/dev/null \
+        | "$jq_bin" -r '.formulae[] | .full_name, .name' || true
+    } | sort -u)
+  # shellcheck disable=SC2086
+  declared_cask_names=$(
+    {
+      printf '%s\n' $declared_casks
+      "$brew" info --json=v2 --cask $declared_casks 2>/dev/null \
+        | "$jq_bin" -r '.casks[] | .full_token, .token' || true
+    } | sort -u)
+
+  unmanaged_formulae=$(comm -23 <("$brew" leaves --installed-on-request | sort -u) <(echo "$declared_formula_names"))
+  unmanaged_casks=$(comm -23 <("$brew" list --cask -1 | sort -u) <(echo "$declared_cask_names"))
+
+  if [[ -z "$unmanaged_formulae" && -z "$unmanaged_casks" ]]; then
+    info "All installed Homebrew packages are declared in darwin.nix."
+    return 0
+  fi
+  warn "Homebrew packages installed but not declared in darwin.nix:"
+  [[ -n "$unmanaged_formulae" ]] && echo "$unmanaged_formulae" | sed 's/^/    formula: /'
+  [[ -n "$unmanaged_casks" ]] && echo "$unmanaged_casks" | sed 's/^/    cask:    /'
+  warn "Add them to darwin.nix to keep them, or 'brew uninstall' them. Homebrew copies of"
+  warn "Nix-managed tools (nushell, starship, carapace, zoxide, atuin) shadow the Nix versions."
+}
+
+# Upgrade Homebrew packages (macOS only). nix-darwin's onActivation.upgrade stays
+# false so that switches and rollbacks never mutate Homebrew.
+_brew_upgrade() {
+  local flake_dir="$1" brew
+  [[ "$(uname -s)" == "Darwin" ]] || return 0
+  if [[ "$BREW_UPGRADE" != true ]]; then
+    info "Skipping Homebrew upgrade (--no-brew)."
+    return 0
+  fi
+  brew=$(_brew_bin)
+  if [[ -z "$brew" ]]; then
+    warn "Homebrew not found — skipping Homebrew upgrade."
+    return 0
+  fi
+
+  info "Upgrading Homebrew packages..."
+  "$brew" update || warn "brew update failed."
+  "$brew" upgrade --formula || warn "brew upgrade --formula failed."
+  "$brew" upgrade --cask --greedy || warn "brew upgrade --cask failed."
+  _brew_report_unmanaged "$flake_dir" "$brew"
 }
 
 _system_current_generation() {
@@ -161,6 +255,7 @@ case "$MODE" in
       info "Already installed — upgrading from remote..."
       _clone_or_update_repo "$REPO_DIR"
       _switch
+      _brew_upgrade "$REPO_DIR"
       info "Upgrade complete."
     else
       info "Not installed — running full setup..."
@@ -200,7 +295,21 @@ case "$MODE" in
     cd "$REPO_DIR"
     nix flake update
     _switch
+    _brew_upgrade "$REPO_DIR"
     info "Local update complete."
+    ;;
+
+  brew-upgrade)
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+      error "--brew-upgrade is only supported on macOS."
+      exit 1
+    fi
+    # Prefer the checkout this script lives in (e.g. `just`), else the installed clone.
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$script_dir/flake.nix" ]]; then flake_dir="$script_dir"; else flake_dir="$REPO_DIR"; fi
+    BREW_UPGRADE=true
+    _brew_upgrade "$flake_dir"
+    info "Homebrew upgrade complete."
     ;;
 
   rollback)
