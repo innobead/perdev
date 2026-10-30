@@ -90,6 +90,10 @@ if ! $IS_MAC; then
 elif command -v nix &>/dev/null; then
   skip "Nix" "already installed — $(nix --version)"
 else
+  if ! bash "$REPO_DIR/scripts/nix-cleanup-mac.sh"; then
+    fail "Nix" "leftovers from a previous install block a fresh install"
+    exit 1
+  fi
   echo "Installing Nix via Determinate Systems installer..."
   if curl -fsSL https://install.determinate.systems/nix \
        | sh -s -- install --no-confirm; then

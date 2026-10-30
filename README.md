@@ -1,178 +1,90 @@
 # perdev
 
-Reproducible personal development environment for x86_64 NixOS and Apple Silicon
-macOS, built with Nix, Home Manager, and nix-darwin.
-
-| Platform | Package installation | User configuration |
-|---|---|---|
-| NixOS | NixOS modules and Nix packages | NixOS + Home Manager |
-| macOS | Homebrew packages declared in `darwin.nix`, plus selected Nix packages | nix-darwin + Home Manager |
-
-`flake.lock` pins the Nix inputs so the same configuration can be reproduced on
-another machine.
+Reproducible development environment for x86_64 NixOS and Apple Silicon macOS,
+built with Nix, Home Manager, and nix-darwin. `flake.lock` pins every input.
 
 ## Install
-
-Requires `git`, `curl`, and either an existing NixOS installation or Apple
-Silicon macOS. On NixOS, the profile imports
-`/etc/nixos/hardware-configuration.nix` and targets UEFI with systemd-boot. On
-macOS, run `xcode-select --install` first if Git is unavailable.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/innobead/perdev/main/perdev-update.sh | bash
 ```
 
-This clones the repository to `~/.local/share/perdev`, installs Nix when
-needed, and applies the appropriate platform configuration. Open a new shell
-after installation.
+This clones the repo to `~/.local/share/perdev`, installs Nix (and Homebrew on
+macOS) if needed, and applies the configuration. Open a new shell afterwards.
 
-To install from a working copy instead:
+- **macOS:** run `xcode-select --install` first if Git is missing. Leftovers of
+  a previous Nix install (stale keychain password, old uninstall receipt) are
+  cleaned up automatically.
+- **NixOS:** requires UEFI with systemd-boot and
+  `/etc/nixos/hardware-configuration.nix`.
 
-```bash
-git clone https://github.com/innobead/perdev.git ~/perdev
-cd ~/perdev
-bash setup.sh
-```
-
-## Tool highlights
-
-- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv
-- **Languages:** Go, Rust via rustup, Python with uv, JavaScript with Bun
-- **Containers:** Docker, Colima on macOS, Podman/Buildah/Skopeo on NixOS,
-  Apple Container on macOS, Dive, Crane, Cosign, Trivy, Lazydocker
-- **Kubernetes:** kubectl, Helm, Kind, K9s, kubectx, Kustomize, Stern,
-  Kubeseal, Tilt
-- **Cloud and issue tracking:** AWS CLI, Google Cloud CLI on macOS, Jira CLI,
-  `bzr` for Bugzilla
-- **AI:** Claude Code, Gemini CLI, GitHub Copilot CLI, Ollama, LLM, RTK,
-  Antigravity, herdr and OpenSuperWhisper on macOS
-- **Utilities:** Neovim, Lazygit, ripgrep, fd, fzf, bat, eza, delta, jq, yq,
-  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats and
-  pinentry-mac on macOS
-
-Bash remains the login shell for compatibility and automatically enters
-Nushell for interactive sessions. Ghostty launches Nushell directly. Ollama
-starts as a user service through systemd on NixOS and launchd on macOS.
-
-## Manage the environment
-
-`perdev-update` is installed to `~/.local/bin`:
+## Update
 
 | Command | Action |
 |---|---|
-| `perdev-update` | Pull the latest configuration and apply it |
-| `perdev-update --no-brew` | Same, without upgrading Homebrew packages |
-| `perdev-update --reinstall` | Remove and reinstall the environment |
-| `perdev-update --self-update` | Update the management script |
+| `perdev-update` | Pull the latest config and apply it |
+| `perdev-update --no-brew` | Same, without upgrading Homebrew |
 | `perdev-update --local-update` | Update `flake.lock` and apply it |
 | `perdev-update --brew-upgrade` | macOS: upgrade Homebrew packages only |
+| `perdev-update --reinstall` | Uninstall, then install from scratch |
+| `perdev-update --self-update` | Update the `perdev-update` script |
 | `perdev-update --generations` | List system generations |
-| `perdev-update --diff [N]` | Compare a generation with the current one |
-| `perdev-update --rollback [N]` | Roll back to a previous generation |
+| `perdev-update --diff [N]` | Compare generation N with the current one |
+| `perdev-update --rollback [N]` | Roll back to generation N (default: previous) |
 
-On macOS, `perdev-update` and `--local-update` also run `brew update`,
-`brew upgrade --formula`, and `brew upgrade --cask`, then list installed
-Homebrew packages that are not declared in `darwin.nix`. Casks that update
-themselves (for example Ghostty, Stats, and Antigravity) are left to their own
-updaters; Homebrew's recorded version for them may lag behind. It also warns when
-Homebrew copies of Nushell, Starship, Carapace, Zoxide, or Atuin shadow the
-Nix versions, even with `--no-brew`. Switching configurations or rolling back
-never changes Homebrew packages. Use `perdev-update` instead of a separate
-Homebrew auto-update job.
+On macOS, updates also:
 
-When working in the repository, use `just`:
+- upgrade Determinate Nix in place (`determinate-nixd upgrade`);
+- run `brew update` and `brew upgrade` (casks that update themselves, such as
+  Ghostty or Antigravity, are left to their own updaters);
+- list Homebrew packages not declared in `darwin.nix`, and warn when Homebrew
+  copies shadow the Nix-managed shell tools.
 
-| Command | Action |
-|---|---|
-| `just install` | Install, or update an existing installation |
-| `just apply` | Apply local configuration changes |
-| `just update` | Pull the remote configuration and apply it |
-| `just local-update` | Update Nix inputs and Homebrew packages, then apply local configuration |
-| `just brew-upgrade` | macOS: upgrade Homebrew packages only |
-| `just uninstall` | Remove macOS-managed components; explain NixOS removal |
-| `just test-mac` | Validate macOS provisioning |
-| `just test-nixos` | Build the NixOS system without activating it |
-
-Every switch creates a system generation. Use `just rollback` after a bad
-update and let the configured weekly Nix garbage collection remove generations
+Rollbacks never touch Homebrew. Weekly garbage collection removes generations
 older than 30 days.
 
-## Package ownership
+## Tools
 
-On macOS, add formulae or casks to `darwin.nix`. Home Manager still installs
-Nushell, Starship, Carapace, Zoxide, and Atuin through Nix because it uses
-those packages to generate shell integrations. Avoid installing duplicate
-Homebrew copies because `/opt/homebrew/bin` takes PATH precedence.
+- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv
+- **Languages:** Go, Rust (rustup), Python (uv), Bun
+- **Containers:** Docker, Colima / Apple Container (macOS), Podman (NixOS),
+  Dive, Crane, Cosign, Trivy, Lazydocker
+- **Kubernetes:** kubectl, Helm, Kind, K9s, kubectx, Kustomize, Stern,
+  Kubeseal, Tilt
+- **Cloud:** AWS CLI, Google Cloud CLI, Jira CLI, `bzr`
+- **AI:** Claude Code, Gemini CLI, Copilot CLI, Ollama, LLM, RTK, Antigravity,
+  herdr, OpenSuperWhisper
+- **Utilities:** Neovim, Lazygit, ripgrep, fd, fzf, bat, eza, delta, jq, yq,
+  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats
 
-On NixOS, add user packages to `home.packages` in `home.nix` and system
-services or operating-system settings to `nixos.nix`. Apply changes with
-`just apply`; use `just local-update` only when intentionally updating pinned
-Nix inputs.
+Bash stays the login shell and enters Nushell for interactive sessions.
 
-Notable exceptions:
+## Adding packages
 
-- Docker is enabled declaratively through `virtualisation.docker` on NixOS.
-- Apple Container is installed through Nix on macOS.
-- The NixOS `bzr` package is pinned in `packages/bzr.nix`; macOS uses the
-  upstream `randomparity/tap`.
-- Homebrew cleanup is disabled, so applying the configuration does not remove
-  packages installed outside this project.
+| Platform | Where |
+|---|---|
+| macOS | Homebrew formulae and casks in `darwin.nix` |
+| NixOS | `home.packages` in `home.nix`; system settings in `nixos.nix` |
 
-## Repository layout
-
-```text
-flake.nix              Nix flake and platform profiles
-flake.lock             Pinned Nix inputs
-home.nix               Home Manager configuration and NixOS user packages
-nixos.nix              NixOS system, boot, user, network, and Docker settings
-darwin.nix             macOS system configuration and Homebrew packages
-packages/              Custom Nix packages
-configs/               Nushell and Ghostty configuration
-setup.sh               Full installation entry point
-perdev-update.sh       Install and update lifecycle command
-uninstall.sh           Environment removal
-scripts/               Minimal bootstrap and platform setup helpers
-tests/                 NixOS and macOS provisioning checks
-.github/workflows/     PR checks and automated flake updates
-```
-
-## Platform notes
-
-### NixOS
-
-- The profile targets x86_64 UEFI workstations using systemd-boot.
-- The host-generated `/etc/nixos/hardware-configuration.nix` supplies detected
-  filesystems and hardware modules.
-- The profile is headless. NetworkManager, Docker, Nix garbage collection, and
-  the user account are managed by `nixos.nix`.
-- `PERDEV_USER` can override the configured username; otherwise evaluation uses
-  `SUDO_USER`, then `USER`.
-
-### macOS
-
-- `darwin-rebuild` applies `darwin.nix` and the embedded Home Manager
-  configuration together.
-- Colima provides the Docker-compatible daemon using Apple's virtualization
-  framework.
-- The Nushell configuration generated under `~/.config` is linked to the
-  macOS application-support location.
-- Stable Homebrew and Nix tool paths are persisted for user `launchd` domains
-  so applications opened from Finder or the Dock inherit them after a reboot.
-- Apple Container and its CI validation require macOS 26.
+Nushell, Starship, Carapace, Zoxide, and Atuin always come from Nix because
+Home Manager generates their shell integrations; don't install them with
+Homebrew. Keep Rust managed by rustup only.
 
 ## Development
 
-Provisioning tests are non-destructive:
+| Command | Action |
+|---|---|
+| `just apply` | Apply local changes |
+| `just local-update` | Update Nix inputs and Homebrew, then apply |
+| `just test-mac` / `just test-nixos` | Non-destructive provisioning checks |
+| `just uninstall` | Remove perdev from macOS |
 
-```bash
-just test-nixos
-just test-mac
+CI runs both checks on every PR. A weekly workflow updates `flake.lock` and
+auto-merges it once both platforms pass.
+
+```text
+flake.nix  home.nix  nixos.nix  darwin.nix   configuration
+packages/  configs/                          custom packages, Nushell/Ghostty config
+setup.sh  perdev-update.sh  uninstall.sh     lifecycle scripts
+scripts/  tests/  .github/workflows/         helpers, checks, CI
 ```
-
-Pull requests run both checks in GitHub Actions. A weekly workflow updates
-`flake.lock`, opens a PR, runs the same checks, and merges only the tested
-commit after both platforms pass.
-
-Keep Rust managed exclusively by rustup; adding Nix `cargo` or `rustc`
-packages alongside it creates toolchain conflicts. Change
-`home.stateVersion` only when required by the Home Manager migration guide.

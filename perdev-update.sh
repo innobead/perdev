@@ -34,8 +34,9 @@ Options:
     --generations      List all system generations
     -h, --help         Show this help message
 
-On macOS, upgrade and --local-update also upgrade Homebrew formulae and casks
-and report Homebrew packages that are not declared in darwin.nix.
+On macOS, upgrade and --local-update also upgrade Determinate Nix, upgrade
+Homebrew formulae and casks, and report Homebrew packages that are not declared
+in darwin.nix.
 
 Examples:
     perdev-update                 # install or upgrade
@@ -218,6 +219,28 @@ _brew_upgrade() {
   _brew_report_unmanaged "$flake_dir" "$brew"
 }
 
+# Upgrade Determinate Nix in place (macOS only; NixOS ships Nix with the system).
+# Keeps /nix and installed packages; no-op when already on the latest version.
+_nix_upgrade() {
+  [[ "$(uname -s)" == "Darwin" ]] || return 0
+  local nixd out current latest
+  nixd=$(command -v determinate-nixd || true)
+  [[ -x "$nixd" ]] || nixd=/usr/local/bin/determinate-nixd
+  if [[ ! -x "$nixd" ]]; then
+    warn "determinate-nixd not found — skipping Nix upgrade (perdev-update --reinstall switches to Determinate Nix)."
+    return 0
+  fi
+  out=$("$nixd" version 2>/dev/null || true)
+  current=$(sed -n 's/^Determinate Nixd daemon version: //p' <<<"$out")
+  latest=$(sed -n 's/^Latest version: //p' <<<"$out")
+  if [[ -n "$current" && "$current" == "$latest" ]]; then
+    info "Determinate Nix ${current} is up to date."
+    return 0
+  fi
+  info "Upgrading Determinate Nix ${current:-?} → ${latest:-latest}..."
+  sudo "$nixd" upgrade || warn "Nix upgrade failed — continuing with the installed version."
+}
+
 _system_current_generation() {
   local target
   target=$(readlink /nix/var/nix/profiles/system)
@@ -277,6 +300,7 @@ case "$MODE" in
     if _is_installed; then
       info "Already installed — upgrading from remote..."
       _clone_or_update_repo "$REPO_DIR"
+      _nix_upgrade
       _switch
       _brew_upgrade "$REPO_DIR"
       info "Upgrade complete."
@@ -317,6 +341,7 @@ case "$MODE" in
     info "Updating flake.lock and reapplying configuration locally..."
     cd "$REPO_DIR"
     nix flake update
+    _nix_upgrade
     _switch
     _brew_upgrade "$REPO_DIR"
     info "Local update complete."

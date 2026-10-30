@@ -10,6 +10,8 @@
 
 set -uo pipefail
 
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ -e /etc/NIXOS ]]; then
   echo "perdev is the active declarative NixOS system configuration."
   echo "Switch to another NixOS configuration before removing this repository."
@@ -166,6 +168,11 @@ elif [[ -d /nix ]]; then
   fail "Nix" "/nix exists but /nix/nix-installer not found — uninstall manually"
 else
   skip "Nix" "not installed"
+fi
+if bash "$REPO_DIR/scripts/nix-cleanup-mac.sh"; then
+  pass "Nix leftovers" "volume and keychain clean"
+else
+  fail "Nix leftovers" "see the message above"
 fi
 
 # ══ Summary ═══════════════════════════════════════════════════════════════════
