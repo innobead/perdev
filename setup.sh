@@ -110,6 +110,11 @@ fi
 # ══ Step 1b: Homebrew (macOS only) ═══════════════════════════════════════════
 if $IS_MAC; then
   section "1b/6  Homebrew"
+  # An existing install may not be on PATH yet (fresh shell, curl | bash).
+  # Re-running the installer over it fails on chown of /opt/homebrew.
+  if ! command -v brew &>/dev/null && [[ -x /opt/homebrew/bin/brew ]]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+  fi
   if command -v brew &>/dev/null; then
     skip "Homebrew" "already installed — $(brew --version | head -1)"
   else
