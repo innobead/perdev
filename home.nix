@@ -1,8 +1,11 @@
 { pkgs, lib, config, isDarwin ? false, nixgl ? null, bzr ? null, ... }:
 
 let
+  # Atuin's PTY/shell e2e tests are flaky in the macOS Nix build sandbox.
+  atuin = pkgs.atuin.overrideAttrs { doCheck = false; };
+
   atuinNushellConfig = pkgs.runCommand "atuin-nushell-config.nu" {
-    nativeBuildInputs = [ pkgs.atuin ];
+    nativeBuildInputs = [ atuin ];
   } ''
     export HOME="$TMPDIR"
     atuin init nu > "$out"
@@ -87,6 +90,7 @@ in
   # Nix package needed to generate nushell init script at build time.
   programs.atuin = {
     enable                   = true;
+    package                  = atuin;
     # The generated script is patched and sourced through programs.nushell.
     enableNushellIntegration = false;
     enableBashIntegration    = true;
