@@ -59,9 +59,10 @@ in
       autoUpdate  = false;
       cleanup     = "none";   # never remove user-installed packages outside this config
       upgrade     = false;
-      # Home Manager sets XDG_CONFIG_HOME, so interactive brew reads tap trust
-      # from ~/.config/homebrew/trust.json. Activation runs under sudo without
-      # it; match it so trust granted here is visible to brew upgrade.
+      # Interactive brew reads tap trust from ~/.config/homebrew/trust.json
+      # (XDG_CONFIG_HOME in bash, HOMEBREW_XDG_CONFIG_HOME in nushell).
+      # Activation runs under sudo without either; match it so trust granted
+      # here is visible to brew upgrade.
       extraEnv.XDG_CONFIG_HOME = "/Users/${config.system.primaryUser}/.config";
     };
 
