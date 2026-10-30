@@ -94,9 +94,9 @@ _detect_profile() {
 _darwin_rebuild() {
   local dr="/run/current-system/sw/bin/darwin-rebuild"
   if [[ -x "$dr" ]]; then
-    sudo "$dr" "$@"
+    sudo -H "$dr" "$@"
   else
-    sudo nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- "$@"
+    sudo -H nix run "github:nix-darwin/nix-darwin#darwin-rebuild" -- "$@"
   fi
 }
 

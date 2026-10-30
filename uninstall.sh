@@ -139,13 +139,13 @@ fi
 section "4/6  nix-darwin"
 if command -v nix &>/dev/null; then
   echo "Running nix-darwin uninstaller (restores /etc files, removes system profile)..."
-  if sudo nix --extra-experimental-features "nix-command flakes" run nix-darwin#darwin-uninstaller 2>/dev/null; then
+  if sudo -H nix --extra-experimental-features "nix-command flakes" run nix-darwin#darwin-uninstaller 2>/dev/null; then
     pass "nix-darwin" "system configuration removed"
-  elif sudo nix --extra-experimental-features "nix-command flakes" \
+  elif sudo -H nix --extra-experimental-features "nix-command flakes" \
          run "github:nix-darwin/nix-darwin#darwin-uninstaller" 2>/dev/null; then
     pass "nix-darwin" "system configuration removed (via github flake)"
   else
-    fail "nix-darwin" "uninstaller failed — run manually: sudo nix run nix-darwin#darwin-uninstaller"
+    fail "nix-darwin" "uninstaller failed — run manually: sudo -H nix run nix-darwin#darwin-uninstaller"
   fi
 else
   skip "nix-darwin" "nix not found — already removed or not installed"
