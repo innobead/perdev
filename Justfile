@@ -56,6 +56,7 @@ local-update:
         DR="/run/current-system/sw/bin/darwin-rebuild"
         [ -x "$DR" ] || DR="nix run github:nix-darwin/nix-darwin#darwin-rebuild --"
         sudo $DR switch --flake ".#mac" --impure -v
+        bash perdev-update.sh --brew-upgrade
     elif [ -e /etc/NIXOS ]; then
         sudo env PERDEV_USER="${PERDEV_USER:-$USER}" \
             nixos-rebuild switch --flake ".#nixos" --impure
@@ -63,6 +64,10 @@ local-update:
         echo "Unsupported platform: perdev supports NixOS and macOS only." >&2
         exit 1
     fi
+
+# macOS: upgrade Homebrew packages and report ones not declared in darwin.nix
+brew-upgrade:
+    bash perdev-update.sh --brew-upgrade
 
 # Remove all components installed by perdev (prompts for confirmation)
 uninstall:

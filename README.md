@@ -41,13 +41,14 @@ bash setup.sh
 - **Containers:** Docker, Colima on macOS, Podman/Buildah/Skopeo on NixOS,
   Apple Container on macOS, Dive, Crane, Cosign, Trivy, Lazydocker
 - **Kubernetes:** kubectl, Helm, Kind, K9s, kubectx, Kustomize, Stern,
-  Kubeseal, Flux, Tilt
+  Kubeseal, Tilt
 - **Cloud and issue tracking:** AWS CLI, Google Cloud CLI on macOS, Jira CLI,
   `bzr` for Bugzilla
 - **AI:** Claude Code, Gemini CLI, GitHub Copilot CLI, Ollama, LLM, RTK,
-  Antigravity
+  Antigravity, herdr and OpenSuperWhisper on macOS
 - **Utilities:** Neovim, Lazygit, ripgrep, fd, fzf, bat, eza, delta, jq, yq,
-  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats on macOS
+  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats and
+  pinentry-mac on macOS
 
 Bash remains the login shell for compatibility and automatically enters
 Nushell for interactive sessions. Ghostty launches Nushell directly. Ollama
@@ -60,12 +61,22 @@ starts as a user service through systemd on NixOS and launchd on macOS.
 | Command | Action |
 |---|---|
 | `perdev-update` | Pull the latest configuration and apply it |
+| `perdev-update --no-brew` | Same, without upgrading Homebrew packages |
 | `perdev-update --reinstall` | Remove and reinstall the environment |
 | `perdev-update --self-update` | Update the management script |
 | `perdev-update --local-update` | Update `flake.lock` and apply it |
+| `perdev-update --brew-upgrade` | macOS: upgrade Homebrew packages only |
 | `perdev-update --generations` | List system generations |
 | `perdev-update --diff [N]` | Compare a generation with the current one |
 | `perdev-update --rollback [N]` | Roll back to a previous generation |
+
+On macOS, `perdev-update` and `--local-update` also run `brew update`,
+`brew upgrade`, and `brew upgrade --cask --greedy`, then list installed
+Homebrew packages that are not declared in `darwin.nix`. They also warn when
+Homebrew copies of Nushell, Starship, Carapace, Zoxide, or Atuin shadow the
+Nix versions, even with `--no-brew`. Switching configurations or rolling back
+never changes Homebrew packages. Use `perdev-update` instead of a separate
+Homebrew auto-update job.
 
 When working in the repository, use `just`:
 
@@ -74,7 +85,8 @@ When working in the repository, use `just`:
 | `just install` | Install, or update an existing installation |
 | `just apply` | Apply local configuration changes |
 | `just update` | Pull the remote configuration and apply it |
-| `just local-update` | Update Nix inputs and apply local configuration |
+| `just local-update` | Update Nix inputs and Homebrew packages, then apply local configuration |
+| `just brew-upgrade` | macOS: upgrade Homebrew packages only |
 | `just uninstall` | Remove macOS-managed components; explain NixOS removal |
 | `just test-mac` | Validate macOS provisioning |
 | `just test-nixos` | Build the NixOS system without activating it |

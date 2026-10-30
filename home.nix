@@ -1,8 +1,13 @@
 { pkgs, lib, config, isDarwin ? false, nixgl ? null, bzr ? null, ... }:
 
 let
+  # Atuin's PTY/shell e2e tests are flaky in the macOS Nix build sandbox.
+  # TODO: drop this override once nixpkgs' atuin builds with checks on darwin
+  # (verify: nix build --impure .#darwinConfigurations.mac.system without it).
+  atuin = pkgs.atuin.overrideAttrs { doCheck = false; };
+
   atuinNushellConfig = pkgs.runCommand "atuin-nushell-config.nu" {
-    nativeBuildInputs = [ pkgs.atuin ];
+    nativeBuildInputs = [ atuin ];
   } ''
     export HOME="$TMPDIR"
     atuin init nu > "$out"
@@ -87,6 +92,7 @@ in
   # Nix package needed to generate nushell init script at build time.
   programs.atuin = {
     enable                   = true;
+    package                  = atuin;
     # The generated script is patched and sourced through programs.nushell.
     enableNushellIntegration = false;
     enableBashIntegration    = true;
@@ -230,7 +236,7 @@ in
       lima colima docker-client docker-buildx docker-compose
 
       # ── Kubernetes ────────────────────────────────────────────────
-      kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal flux
+      kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal
       tilt  # fast iterative Kubernetes dev loop (Tiltfile hot-reload)
 
       # ── Cloud and issue tracking ──────────────────────────────────

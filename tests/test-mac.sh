@@ -118,7 +118,6 @@ _check_cmd "k9s"             "k9s"             k9s       version
 _check_cmd "tilt"            "tilt"            tilt      version
 _check_cmd "kubectx"         "kubectx"          kubectx   --version 2>/dev/null || true
 _check_cmd "kustomize"       "kustomize"        kustomize version
-_check_cmd "flux"            "fluxcd"           flux      --version
 
 # Cloud and issue tracking
 _check_cmd "aws"             "awscli2"          aws       --version

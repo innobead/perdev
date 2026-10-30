@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, config, ... }:
 
 let
   guiPath = [
@@ -59,6 +59,11 @@ in
       autoUpdate  = false;
       cleanup     = "none";   # never remove user-installed packages outside this config
       upgrade     = false;
+      # Interactive brew reads tap trust from ~/.config/homebrew/trust.json
+      # (XDG_CONFIG_HOME in bash, HOMEBREW_XDG_CONFIG_HOME in nushell).
+      # Activation runs under sudo without either; match it so trust granted
+      # here is visible to brew upgrade.
+      extraEnv.XDG_CONFIG_HOME = "/Users/${config.system.primaryUser}/.config";
     };
 
     taps = [
@@ -74,6 +79,7 @@ in
       "httpie" "curlie" "grpcurl"
       "htop" "dust" "procs"
       "vhs" "ffmpeg" "ttyd"
+      "pinentry-mac"       # GPG passphrase prompt (macOS keychain integration)
 
       # ── Go ────────────────────────────────────────────────────────────
       "go" "gopls" "golangci-lint" "delve"
@@ -85,7 +91,9 @@ in
       "python3" "uv"
 
       # ── JavaScript ───────────────────────────────────────────────────
-      "oven-sh/bun/bun"
+      # Third-party tap formulae must be trusted (Homebrew >= 6 requires tap
+      # trust); brew bundle persists it so `brew upgrade` can also load them.
+      { name = "oven-sh/bun/bun"; trusted = true; }
 
       # ── Container / OCI ──────────────────────────────────────────────
       "dive" "crane" "cosign" "lazydocker" "trivy"
@@ -95,11 +103,11 @@ in
       # ── Kubernetes ───────────────────────────────────────────────────
       "kubectl" "helm" "kind" "k9s" "kubectx" "kustomize"
       "stern" "kubeseal"
-      "fluxcd/tap/flux"
-      "tilt-dev/tap/tilt"
+      { name = "tilt-dev/tap/tilt"; trusted = true; }
 
       # ── Cloud and issue tracking ───────────────────────────────────
-      "awscli" "jira-cli" "randomparity/tap/bzr"
+      "awscli" "jira-cli"
+      { name = "randomparity/tap/bzr"; trusted = true; }
 
       # ── Shell / terminal ─────────────────────────────────────────────
       # nushell/starship/carapace/zoxide/atuin: Nix-managed via programs.* in home.nix
@@ -109,6 +117,7 @@ in
       # ── AI tools ─────────────────────────────────────────────────────
       "ollama" "llm" "rtk"
       "gemini-cli"
+      "herdr"              # terminal agent multiplexer
     ];
 
     casks = [
@@ -120,6 +129,7 @@ in
       "gcloud-cli"        # Google Cloud CLI (pre-built binary)
       "tunnelblick"       # OpenVPN client (pre-built binary)
       "stats"             # system monitor for the menu bar
+      "opensuperwhisper"  # Whisper dictation/transcription app
     ];
 
     masApps = {};

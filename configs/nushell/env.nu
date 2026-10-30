@@ -33,3 +33,8 @@ $env.PAGER   = "bat --plain"
 $env.CARGO_HOME  = ($env.HOME | path join ".cargo")
 $env.RUSTUP_HOME = ($env.HOME | path join ".rustup")
 $env.BUN_INSTALL  = ($env.HOME | path join ".bun")
+
+# Home Manager's XDG_CONFIG_HOME reaches POSIX shells only. Point Homebrew alone
+# at ~/.config so tap trust (homebrew/trust.json) matches bash and activation,
+# without moving other macOS tools' config (e.g. k9s) out of Application Support.
+$env.HOMEBREW_XDG_CONFIG_HOME = ($env.HOME | path join ".config")
