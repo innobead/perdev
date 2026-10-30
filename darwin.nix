@@ -79,6 +79,7 @@ in
       "httpie" "curlie" "grpcurl"
       "htop" "dust" "procs"
       "vhs" "ffmpeg" "ttyd"
+      "pinentry-mac"       # GPG passphrase prompt (macOS keychain integration)
 
       # ── Go ────────────────────────────────────────────────────────────
       "go" "gopls" "golangci-lint" "delve"
@@ -116,6 +117,7 @@ in
       # ── AI tools ─────────────────────────────────────────────────────
       "ollama" "llm" "rtk"
       "gemini-cli"
+      "herdr"              # terminal agent multiplexer
     ];
 
     casks = [
@@ -127,6 +129,7 @@ in
       "gcloud-cli"        # Google Cloud CLI (pre-built binary)
       "tunnelblick"       # OpenVPN client (pre-built binary)
       "stats"             # system monitor for the menu bar
+      "opensuperwhisper"  # Whisper dictation/transcription app
     ];
 
     masApps = {};

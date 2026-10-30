@@ -177,8 +177,20 @@ _brew_report_unmanaged() {
   warn "Homebrew packages installed but not declared in darwin.nix:"
   [[ -n "$unmanaged_formulae" ]] && echo "$unmanaged_formulae" | sed 's/^/    formula: /'
   [[ -n "$unmanaged_casks" ]] && echo "$unmanaged_casks" | sed 's/^/    cask:    /'
-  warn "Add them to darwin.nix to keep them, or 'brew uninstall' them. Homebrew copies of"
-  warn "Nix-managed tools (nushell, starship, carapace, zoxide, atuin) shadow the Nix versions."
+  warn "Add them to darwin.nix to keep them, or 'brew uninstall' them."
+}
+
+# Homebrew's bin precedes ~/.nix-profile/bin on PATH, so a Homebrew copy of a
+# Nix-managed shell tool silently replaces the version Home Manager configured.
+_brew_check_shadowing() {
+  local brew="$1" prefix tool shadowed=()
+  prefix=$("$brew" --prefix)
+  for tool in nu starship carapace zoxide atuin; do
+    [[ -e "$prefix/bin/$tool" ]] && shadowed+=("$tool")
+  done
+  [[ ${#shadowed[@]} -eq 0 ]] && return 0
+  warn "Homebrew copies shadow Nix-managed tools: ${shadowed[*]}"
+  warn "Remove them with 'brew uninstall' (nu is provided by the nushell formula)."
 }
 
 # Upgrade Homebrew packages (macOS only). nix-darwin's onActivation.upgrade stays
@@ -186,13 +198,14 @@ _brew_report_unmanaged() {
 _brew_upgrade() {
   local flake_dir="$1" brew
   [[ "$(uname -s)" == "Darwin" ]] || return 0
-  if [[ "$BREW_UPGRADE" != true ]]; then
-    info "Skipping Homebrew upgrade (--no-brew)."
-    return 0
-  fi
   brew=$(_brew_bin)
   if [[ -z "$brew" ]]; then
     warn "Homebrew not found — skipping Homebrew upgrade."
+    return 0
+  fi
+  _brew_check_shadowing "$brew"
+  if [[ "$BREW_UPGRADE" != true ]]; then
+    info "Skipping Homebrew upgrade (--no-brew)."
     return 0
   fi
 

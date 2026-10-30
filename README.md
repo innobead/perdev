@@ -45,9 +45,10 @@ bash setup.sh
 - **Cloud and issue tracking:** AWS CLI, Google Cloud CLI on macOS, Jira CLI,
   `bzr` for Bugzilla
 - **AI:** Claude Code, Gemini CLI, GitHub Copilot CLI, Ollama, LLM, RTK,
-  Antigravity
+  Antigravity, herdr and OpenSuperWhisper on macOS
 - **Utilities:** Neovim, Lazygit, ripgrep, fd, fzf, bat, eza, delta, jq, yq,
-  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats on macOS
+  age, SOPS, mkcert, HTTPie, grpcurl, htop, dust, procs, VHS, Stats and
+  pinentry-mac on macOS
 
 Bash remains the login shell for compatibility and automatically enters
 Nushell for interactive sessions. Ghostty launches Nushell directly. Ollama
@@ -71,8 +72,11 @@ starts as a user service through systemd on NixOS and launchd on macOS.
 
 On macOS, `perdev-update` and `--local-update` also run `brew update`,
 `brew upgrade`, and `brew upgrade --cask --greedy`, then list installed
-Homebrew packages that are not declared in `darwin.nix`. Switching
-configurations or rolling back never changes Homebrew packages.
+Homebrew packages that are not declared in `darwin.nix`. They also warn when
+Homebrew copies of Nushell, Starship, Carapace, Zoxide, or Atuin shadow the
+Nix versions, even with `--no-brew`. Switching configurations or rolling back
+never changes Homebrew packages. Use `perdev-update` instead of a separate
+Homebrew auto-update job.
 
 When working in the repository, use `just`:
 

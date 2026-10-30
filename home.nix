@@ -2,6 +2,8 @@
 
 let
   # Atuin's PTY/shell e2e tests are flaky in the macOS Nix build sandbox.
+  # TODO: drop this override once nixpkgs' atuin builds with checks on darwin
+  # (verify: nix build --impure .#darwinConfigurations.mac.system without it).
   atuin = pkgs.atuin.overrideAttrs { doCheck = false; };
 
   atuinNushellConfig = pkgs.runCommand "atuin-nushell-config.nu" {
