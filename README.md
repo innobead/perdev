@@ -41,7 +41,7 @@ bash setup.sh
 - **Containers:** Docker, Colima on macOS, Podman/Buildah/Skopeo on NixOS,
   Apple Container on macOS, Dive, Crane, Cosign, Trivy, Lazydocker
 - **Kubernetes:** kubectl, Helm, Kind, K9s, kubectx, Kustomize, Stern,
-  Kubeseal, Flux, Tilt
+  Kubeseal, Tilt
 - **Cloud and issue tracking:** AWS CLI, Google Cloud CLI on macOS, Jira CLI,
   `bzr` for Bugzilla
 - **AI:** Claude Code, Gemini CLI, GitHub Copilot CLI, Ollama, LLM, RTK,

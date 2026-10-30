@@ -234,7 +234,7 @@ in
       lima colima docker-client docker-buildx docker-compose
 
       # ── Kubernetes ────────────────────────────────────────────────
-      kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal flux
+      kubectl kubernetes-helm kind k9s kubectx kustomize stern kubeseal
       tilt  # fast iterative Kubernetes dev loop (Tiltfile hot-reload)
 
       # ── Cloud and issue tracking ──────────────────────────────────

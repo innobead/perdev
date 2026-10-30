@@ -85,7 +85,9 @@ in
       "python3" "uv"
 
       # ── JavaScript ───────────────────────────────────────────────────
-      "oven-sh/bun/bun"
+      # Third-party tap formulae must be trusted (Homebrew >= 6 requires tap
+      # trust); brew bundle persists it so `brew upgrade` can also load them.
+      { name = "oven-sh/bun/bun"; trusted = true; }
 
       # ── Container / OCI ──────────────────────────────────────────────
       "dive" "crane" "cosign" "lazydocker" "trivy"
@@ -95,11 +97,11 @@ in
       # ── Kubernetes ───────────────────────────────────────────────────
       "kubectl" "helm" "kind" "k9s" "kubectx" "kustomize"
       "stern" "kubeseal"
-      "fluxcd/tap/flux"
-      "tilt-dev/tap/tilt"
+      { name = "tilt-dev/tap/tilt"; trusted = true; }
 
       # ── Cloud and issue tracking ───────────────────────────────────
-      "awscli" "jira-cli" "randomparity/tap/bzr"
+      "awscli" "jira-cli"
+      { name = "randomparity/tap/bzr"; trusted = true; }
 
       # ── Shell / terminal ─────────────────────────────────────────────
       # nushell/starship/carapace/zoxide/atuin: Nix-managed via programs.* in home.nix
