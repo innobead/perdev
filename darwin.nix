@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ lib, config, ... }:
 
 let
   guiPath = [
@@ -59,6 +59,10 @@ in
       autoUpdate  = false;
       cleanup     = "none";   # never remove user-installed packages outside this config
       upgrade     = false;
+      # Home Manager sets XDG_CONFIG_HOME, so interactive brew reads tap trust
+      # from ~/.config/homebrew/trust.json. Activation runs under sudo without
+      # it; match it so trust granted here is visible to brew upgrade.
+      extraEnv.XDG_CONFIG_HOME = "/Users/${config.system.primaryUser}/.config";
     };
 
     taps = [

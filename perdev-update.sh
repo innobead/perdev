@@ -138,8 +138,8 @@ _brew_report_unmanaged() {
   fi
 
   # Resolve core aliases (e.g. kubectl → kubernetes-cli) to installed names.
-  # Tap formulae (owner/tap/name) are matched by their short name, as listed by
-  # `brew leaves`, so untrusted taps never need to be loaded.
+  # Tap formulae (owner/tap/name) are matched by their short name, so untrusted
+  # taps never need to be loaded.
   local core_brews=() tap_brew_names=() b
   local declared_formula_names declared_cask_names unmanaged_formulae unmanaged_casks
   for b in $declared_brews; do
@@ -159,7 +159,15 @@ _brew_report_unmanaged() {
         | "$jq_bin" -r '.casks[] | .full_token, .token' || true
     } | sort -u)
 
-  unmanaged_formulae=$(comm -23 <("$brew" leaves --installed-on-request | sort -u) <(echo "$declared_formula_names"))
+  # Leaves exclude dependencies; trusted tap formulae are listed as owner/tap/name.
+  # Formulae from untrusted taps cannot be loaded, so leaves omits them; add any
+  # installed formula Homebrew cannot load.
+  local leaves loadable untrusted_installed
+  leaves=$("$brew" leaves --installed-on-request | sed 's#.*/##')
+  loadable=$("$brew" info --json=v2 --installed 2>/dev/null | "$jq_bin" -r '.formulae[].name' || true)
+  untrusted_installed=$(comm -23 <("$brew" list --formula -1 | sort -u) <(echo "$loadable" | sort -u))
+  unmanaged_formulae=$(comm -23 <(printf '%s\n%s\n' "$leaves" "$untrusted_installed" | sed '/^$/d' | sort -u) \
+    <(echo "$declared_formula_names"))
   unmanaged_casks=$(comm -23 <("$brew" list --cask -1 | sort -u) <(echo "$declared_cask_names"))
 
   if [[ -z "$unmanaged_formulae" && -z "$unmanaged_casks" ]]; then
