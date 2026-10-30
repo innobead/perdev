@@ -1,30 +1,5 @@
 { pkgs, lib, config, isDarwin ? false, nixgl ? null, bzr ? null, ... }:
 
-let
-  # Atuin's PTY/shell e2e tests are flaky in the macOS Nix build sandbox.
-  # TODO: drop this override once nixpkgs' atuin builds with checks on darwin
-  # (verify: nix build --impure .#darwinConfigurations.mac.system without it).
-  atuin = pkgs.atuin.overrideAttrs { doCheck = false; };
-
-  atuinNushellConfig = pkgs.runCommand "atuin-nushell-config.nu" {
-    nativeBuildInputs = [ atuin ];
-  } ''
-    export HOME="$TMPDIR"
-    atuin init nu > "$out"
-
-    awk '
-      /name: atuin/ {
-        bindings++
-        if (bindings == 2) {
-          sub(/name: atuin/, "name: atuin_up")
-        }
-      }
-      { print }
-      END { if (bindings != 2) exit 1 }
-    ' "$out" > "$TMPDIR/patched.nu"
-    mv "$TMPDIR/patched.nu" "$out"
-  '';
-in
 {
   # ── Identity ──────────────────────────────────────────────────────────────
   # builtins.getEnv requires --impure (handled in install.sh).
@@ -40,10 +15,7 @@ in
   programs.nushell = {
     enable      = true;
     extraEnv    = builtins.readFile ./configs/nushell/env.nu;
-    extraConfig = ''
-      source ${atuinNushellConfig}
-      ${builtins.readFile ./configs/nushell/config.nu}
-    '';
+    extraConfig = builtins.readFile ./configs/nushell/config.nu;
   };
 
   # ── Bash (stays as OS login shell; switches to nushell for interactive use) ─
@@ -86,22 +58,6 @@ in
     enable                   = true;
     enableNushellIntegration = true;
     enableBashIntegration    = true;
-  };
-
-  # ── Atuin (shell history) ─────────────────────────────────────────────────
-  # Nix package needed to generate nushell init script at build time.
-  programs.atuin = {
-    enable                   = true;
-    package                  = atuin;
-    # The generated script is patched and sourced through programs.nushell.
-    enableNushellIntegration = false;
-    enableBashIntegration    = true;
-    settings = {
-      auto_sync    = false;
-      update_check = false;
-      style        = "compact";
-      enter_accept = true;
-    };
   };
 
   # ── Ghostty ───────────────────────────────────────────────────────────────

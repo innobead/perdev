@@ -100,7 +100,6 @@ _check_cmd "nushell"         "nushell"          nu        --version
 _check_cmd "starship"        "starship"         starship  --version
 _check_cmd "carapace"        "carapace"         carapace  --version
 _check_cmd "zoxide"          "zoxide"           zoxide    --version
-_check_cmd "atuin"           "atuin"            atuin     --version
 _check_cmd "ghostty-bin"     "ghostty-bin"      ghostty   --version 2>/dev/null || true
 
 # Dev toolchains

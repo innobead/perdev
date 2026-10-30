@@ -186,7 +186,7 @@ _brew_report_unmanaged() {
 _brew_check_shadowing() {
   local brew="$1" prefix tool shadowed=()
   prefix=$("$brew" --prefix)
-  for tool in nu starship carapace zoxide atuin; do
+  for tool in nu starship carapace zoxide; do
     [[ -e "$prefix/bin/$tool" ]] && shadowed+=("$tool")
   done
   [[ ${#shadowed[@]} -eq 0 ]] && return 0

@@ -3,7 +3,7 @@
 #
 # NOTE: home.sessionPath in home.nix only applies to POSIX shells (bash/zsh via
 # ~/.profile). When Ghostty launches nu directly (no bash intermediary), the Nix
-# profile paths are absent. Prepend them here so atuin/zoxide hooks can find
+# profile paths are absent. Prepend them here so zoxide/starship hooks can find
 # their binaries before config.nu runs.
 
 # ── PATH: priority-ordered paths ──────────────────────────────────────────────

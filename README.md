@@ -45,7 +45,7 @@ older than 30 days.
 
 ## Tools
 
-- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, Atuin, tmux, direnv
+- **Shell:** Ghostty, Nushell, Starship, Carapace, Zoxide, tmux, direnv
 - **Languages:** Go, Rust (rustup), Python (uv), Bun
 - **Containers:** Docker, Colima / Apple Container (macOS), Podman (NixOS),
   Dive, Crane, Cosign, Trivy, Lazydocker
@@ -66,7 +66,7 @@ Bash stays the login shell and enters Nushell for interactive sessions.
 | macOS | Homebrew formulae and casks in `darwin.nix` |
 | NixOS | `home.packages` in `home.nix`; system settings in `nixos.nix` |
 
-Nushell, Starship, Carapace, Zoxide, and Atuin always come from Nix because
+Nushell, Starship, Carapace, and Zoxide always come from Nix because
 Home Manager generates their shell integrations; don't install them with
 Homebrew. Keep Rust managed by rustup only.
 

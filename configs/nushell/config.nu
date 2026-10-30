@@ -1,5 +1,5 @@
 # config.nu — appended to Home Manager's generated config.nu via programs.nushell.extraConfig
-# Runs after Home Manager integration snippets (starship, carapace, zoxide, atuin).
+# Runs after Home Manager integration snippets (starship, carapace, zoxide).
 # Modifies specific $env.config fields rather than replacing the whole record.
 
 # ── Core settings ─────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ $env.config.table.mode      = "rounded"
 $env.config.table.index_mode = "always"
 $env.config.completions.algorithm = "fuzzy"
 
-# sqlite history required for atuin
+# sqlite history: richer Ctrl-R search (cwd, exit status, duration)
 $env.config.history.file_format  = "sqlite"
 $env.config.history.max_size     = 100_000
 $env.config.history.sync_on_enter = true
