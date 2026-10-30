@@ -71,8 +71,10 @@ starts as a user service through systemd on NixOS and launchd on macOS.
 | `perdev-update --rollback [N]` | Roll back to a previous generation |
 
 On macOS, `perdev-update` and `--local-update` also run `brew update`,
-`brew upgrade`, and `brew upgrade --cask --greedy`, then list installed
-Homebrew packages that are not declared in `darwin.nix`. They also warn when
+`brew upgrade --formula`, and `brew upgrade --cask`, then list installed
+Homebrew packages that are not declared in `darwin.nix`. Casks that update
+themselves (for example Ghostty, Stats, and Antigravity) are left to their own
+updaters; Homebrew's recorded version for them may lag behind. It also warns when
 Homebrew copies of Nushell, Starship, Carapace, Zoxide, or Atuin shadow the
 Nix versions, even with `--no-brew`. Switching configurations or rolling back
 never changes Homebrew packages. Use `perdev-update` instead of a separate

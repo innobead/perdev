@@ -212,7 +212,9 @@ _brew_upgrade() {
   info "Upgrading Homebrew packages..."
   "$brew" update || warn "brew update failed."
   "$brew" upgrade --formula || warn "brew upgrade --formula failed."
-  "$brew" upgrade --cask --greedy || warn "brew upgrade --cask failed."
+  # No --greedy: casks with auto_updates (ghostty, agy, ...) update themselves;
+  # reinstalling them over a self-update conflicts with the replaced files.
+  "$brew" upgrade --cask || warn "brew upgrade --cask failed."
   _brew_report_unmanaged "$flake_dir" "$brew"
 }
 
